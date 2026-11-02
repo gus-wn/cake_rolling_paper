@@ -102,31 +102,40 @@ button,input,textarea{font:inherit;color:inherit}
 .cake-head{text-align:center;display:flex;flex-direction:column;gap:4px;align-items:center}
 .cake-head h1{font-size:clamp(28px,6vw,42px)}
 .cake-head .sub{font-family:var(--f-hand);font-size:22px;color:var(--muted)}
-.stage{position:relative;width:100%;max-width:640px;margin:0 auto}
-.stage canvas{display:block;width:100%;aspect-ratio:4/3;image-rendering:pixelated;touch-action:manipulation}
-.stage-tip{text-align:center;font-size:14px;color:var(--muted)}
-.bubble{position:absolute;transform:translate(-50%,calc(-100% - 10px));width:min(260px,80%);
-  background:var(--b-bg,#fff6dc);color:var(--note-ink);border:2px solid #4a3640;border-radius:10px;padding:10px 12px 12px;
-  box-shadow:3px 3px 0 rgba(74,54,64,.35);z-index:5}
-.bubble::after{content:"";position:absolute;left:var(--tail,50%);bottom:-8px;width:12px;height:12px;background:var(--b-bg,#fff6dc);border-right:2px solid #4a3640;border-bottom:2px solid #4a3640;transform:translateX(-50%) rotate(45deg)}
-.bubble .who{font-family:var(--f-display);font-size:15px;display:flex;align-items:center;gap:6px}
-.bubble .who img{width:22px;image-rendering:pixelated}
-.bubble .msg{font-family:var(--f-hand);font-size:19px;line-height:1.35;white-space:pre-wrap;word-break:break-word;max-height:180px;overflow:auto}
-.bubble .x{position:absolute;top:4px;right:6px;border:0;background:none;cursor:pointer;font-size:16px;color:#4a3640}
+.board{display:flex;flex-direction:column;align-items:center;width:100%;padding-top:6px}
+.topper{display:block;image-rendering:pixelated;max-width:60%;margin-bottom:-2px;position:relative;z-index:2}
+.tier{display:flex;justify-content:center;align-items:flex-start;gap:10px;padding:34px 18px 0;background-size:100% 100%;background-repeat:no-repeat;image-rendering:pixelated;max-width:100%;margin-top:-4px;position:relative}
+.plate{background-size:100% 100%;image-rendering:pixelated;margin-top:-4px;max-width:100%}
+.board-tools{display:flex;justify-content:space-between;align-items:center;gap:8px 12px;flex-wrap:wrap}
+.board-tools .hint{flex:1;min-width:0}
+.orn{width:var(--cw,110px);height:var(--ch,140px);perspective:800px;cursor:pointer;flex:none;position:relative;transform:rotate(var(--rot,0deg));transition:transform .15s}
+.orn:hover{transform:rotate(0deg) translateY(-3px)}
+.orn:focus-visible{outline:3px solid var(--mint);outline-offset:4px;border-radius:12px}
+.orn-inner{position:relative;width:100%;height:100%;transition:transform .55s cubic-bezier(.34,1.35,.5,1);transform-style:preserve-3d}
+.orn.flipped .orn-inner{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;-webkit-backface-visibility:hidden;backface-visibility:hidden;background:var(--n-bg);color:var(--note-ink);border:2px solid #4a3640;border-radius:10px;box-shadow:3px 3px 0 rgba(74,54,64,.3);display:flex;flex-direction:column}
+.front{align-items:center;justify-content:center;gap:1px;padding:12px 6px 8px}
+.front img{height:44%;width:auto;max-width:80%;image-rendering:pixelated}
+.front .from{font-family:var(--f-pixel);font-size:9px;letter-spacing:.12em;opacity:.55;margin-top:6px}
+.front b{font-family:var(--f-display);font-weight:400;font-size:15px;line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hook{position:absolute;top:-8px;left:50%;width:13px;height:13px;border:2px solid #4a3640;border-radius:50%;background:#fff;transform:translateX(-50%)}
+.back{transform:rotateY(180deg);padding:9px 9px 6px;justify-content:space-between;gap:4px}
+.back .msg{font-family:var(--f-hand);line-height:1.22;white-space:pre-wrap;word-break:break-word;overflow:auto;flex:1;min-height:0}
+.back .sig{display:flex;justify-content:space-between;align-items:center;gap:4px;font-family:var(--f-display);font-size:12px}
+.back .sig span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.75}
+.orn-del{border:0;background:none;color:#a33c55;cursor:pointer;font-size:11px;padding:0 2px;flex:none;font-family:var(--f-body)}
+.orn.add{border:2px dashed rgba(74,54,64,.55);border-radius:10px;background:rgba(255,255,255,.6);color:#4a3640;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-family:var(--f-display);font-size:14px;perspective:none}
+.orn.add .plus{font-size:28px;line-height:1}
+.orn.add:disabled{opacity:.5;cursor:default}
+.compose-top{display:flex;gap:14px;align-items:flex-start}
+.orn.pv{--cw:92px;--ch:118px;cursor:default;margin-top:10px}
+.orn.pv:hover{transform:none}
+@media (prefers-reduced-motion:reduce){.orn-inner{transition:none}}
 .actions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
 .share{display:flex;flex-direction:column;gap:10px}
 .share .linkbox{display:flex;gap:8px}
 .share input{flex:1;min-width:0;border:2px solid var(--line);border-radius:8px;background:var(--bg);padding:7px 10px;font-size:13px}
 .code{font-family:var(--f-pixel);font-size:18px;letter-spacing:.15em;color:var(--accent)}
-.notes{columns:3 200px;column-gap:14px}
-.note{break-inside:avoid;margin-bottom:14px;background:var(--n-bg);color:var(--note-ink);border:2px solid #4a3640;border-radius:10px;padding:12px 14px;cursor:pointer;box-shadow:3px 3px 0 rgba(74,54,64,.25);transition:transform .1s}
-.note:hover{transform:rotate(-.6deg)}
-.note.sel{outline:3px solid var(--accent);outline-offset:2px}
-.note .who{display:flex;align-items:center;gap:8px;font-family:var(--f-display);font-size:16px}
-.note .who img{width:26px;image-rendering:pixelated}
-.note .msg{font-family:var(--f-hand);font-size:20px;line-height:1.38;white-space:pre-wrap;word-break:break-word;margin-top:4px}
-.note .meta{display:flex;justify-content:space-between;align-items:center;margin-top:6px;font-size:12px;opacity:.7}
-.note .del{border:0;background:none;color:#a33c55;cursor:pointer;font-size:12px;text-decoration:underline}
 .count{font-family:var(--f-display);font-size:18px}
 .danger-zone{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;font-size:13px}
 .linkish{background:none;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;font-size:13px}
@@ -136,7 +145,7 @@ button,input,textarea{font:inherit;color:inherit}
   padding:max(12px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) max(12px,env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))}
 @media (min-width:620px){.overlay{align-items:center}}
 .sheet{width:100%;max-width:520px;max-height:100%;overflow:auto;display:flex;flex-direction:column;gap:14px}
-.picks{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.picks{display:grid;grid-template-columns:repeat(auto-fill,minmax(54px,1fr));gap:6px}
 .pick{border:2px solid var(--line);border-radius:8px;background:var(--bg);padding:6px 2px 3px;cursor:pointer;display:flex;flex-direction:column;align-items:center;font-size:11px;gap:1px}
 .pick img{width:30px;height:30px;object-fit:contain;image-rendering:pixelated}
 .pick[aria-pressed="true"]{border-color:var(--accent);background:var(--soft)}
@@ -364,17 +373,18 @@ function renderHome(){
     recent.length?tiles:el("div",{class:"empty",text:"이 기기에서 연 케이크가 여기에 모여요. 받은 코드가 있으면 위에서 찾아보세요."})));
 }
 
-/* ===================== cake view ===================== */
+/* ===================== cake view (tiered cake + flip cards) ===================== */
 const V = {};
 function renderCake(code){
   const app=$("#app"); app.replaceChildren();
-  Object.assign(V,{code,cake:null,tops:[],sel:null,ghost:null});
-  const canvas=el("canvas",{role:"img","aria-label":"메시지 토핑이 올라간 도트 케이크. 케이크를 누르면 토핑을 올릴 수 있어요."});
-  const stage=el("div",{class:"stage"},canvas);
-  V.canvas=canvas; V.stage=stage;
+  Object.assign(V,{code,cake:null,tops:[],flipped:new Set(),sig:""});
   const head=el("div",{class:"cake-head"},el("div",{class:"pixel-label",text:"Rolling paper cake"}),el("h1",{text:"케이크를 불러오는 중…"}),el("div",{class:"sub"}));
-  const tip=el("div",{class:"stage-tip",text:"케이크 위 빈자리를 누르면 메시지 토핑을 올릴 수 있어요. 올라간 토핑을 누르면 메시지가 보여요."});
-  const addBtn=el("button",{class:"btn primary",type:"button",disabled:true,onclick:()=>{ const p=findFreeSpot(); openCompose(p.x,p.y); }},"＋ 메시지 토핑 올리기");
+  const board=el("div",{class:"board"});
+  const count=el("span",{class:"count"});
+  const allBtn=el("button",{class:"btn small",type:"button",onclick:()=>{
+      const open=V.flipped.size<V.tops.length; V.flipped=new Set(open?V.tops.map(t=>t.id):[]);
+      board.querySelectorAll(".orn[data-id]").forEach(c=>setFlip(c,open)); syncAllBtn(); }},"모두 뒤집어 읽기");
+  const addBtn=el("button",{class:"btn primary",type:"button",disabled:true,onclick:()=>openCompose()},"＋ 메시지 토핑 올리기");
   const pngBtn=el("button",{class:"btn",type:"button",onclick:()=>exportFile("png")},"이미지로 저장");
   const pdfBtn=el("button",{class:"btn",type:"button",onclick:()=>exportFile("pdf")},"A4 PDF로 저장");
   const linkIn=el("input",{id:"sharelink",readonly:true,value:shareLink(code),"aria-label":"공유 링크",onfocus:e=>e.target.select()});
@@ -384,33 +394,26 @@ function renderCake(code){
     el("button",{class:"linkish",type:"button",style:"align-self:flex-start",onclick:()=>{
       const c=V.cake||{}; copyText(`🎂 ${c.to||""}에게 주는 롤링페이퍼 케이크에 메시지 토핑을 올려 주세요!\n${shareLink(code)}`); }},"초대 문구까지 복사하기"),
     el("div",{class:"hint",text:"링크를 받은 사람은 로그인 없이 바로 메시지를 올릴 수 있어요."}));
-  const notes=el("div",{class:"notes"}), count=el("div",{class:"count"});
-  const emptyNote=el("div",{class:"empty",text:"아직 올라간 토핑이 없어요. 첫 메시지를 올려 주세요!",hidden:true});
   const delZone=el("div",{class:"danger-zone",hidden:true});
-  Object.assign(V,{notes,count,empty:emptyNote,head,addBtn,exportBtns:[pngBtn,pdfBtn],delZone});
+  Object.assign(V,{head,board,count,allBtn,addBtn,exportBtns:[pngBtn,pdfBtn],delZone});
 
   app.append(
     el("div",{class:"topbar"},el("button",{class:"btn small ghost",type:"button",onclick:()=>location.hash=""},"← 처음으로"),
       el("span",{class:"pixel-label",text:"cake "+code})),
-    head, stage, tip, el("div",{class:"actions"},addBtn,pngBtn,pdfBtn), share,
-    el("div",{class:"list-head"},el("h2",{text:"도착한 메시지"}),count), emptyNote, notes, delZone);
+    head,
+    el("div",{class:"board-tools"},count,el("span",{class:"hint",text:"카드를 누르면 뒤집혀서 메시지가 보여요"}),allBtn),
+    board,
+    el("div",{class:"actions"},addBtn,pngBtn,pdfBtn), share, delZone);
+  layoutBoard();
 
   if(lsGet("justMade")===code){ lsSet("justMade",""); setTimeout(()=>toast("케이크가 구워졌어요! 링크를 친구들에게 보내 주세요"),300); }
-
-  const toDot=e=>{ const r=canvas.getBoundingClientRect(); return {x:Math.floor((e.clientX-r.left)/r.width*W),y:Math.floor((e.clientY-r.top)/r.height*H)}; };
-  canvas.addEventListener("click",e=>{ const p=toDot(e), hit=hitTop(p.x,p.y);
-    if(hit){ select(hit.id===V.sel?null:hit.id); return; }
-    if(V.sel){ select(null); return; }
-    if(inCake(p.x,p.y)) openCompose(p.x,p.y); });
-  canvas.addEventListener("pointermove",e=>{ const p=toDot(e); canvas.style.cursor=(hitTop(p.x,p.y)||inCake(p.x,p.y))?"pointer":"default"; });
-  draw();
 
   let alive=true; S.unsub.push(()=>{ alive=false; });
   const sub=head.querySelector(".sub"), h1=head.querySelector("h1");
   api("getCake",{code}).then(c=>{ if(!alive) return;
     V.cake={...c, flavor:(c.flavor in FLAVORS)?c.flavor:"strawberry"};
     h1.textContent=`${V.cake.to}에게`; sub.textContent=V.cake.title||"";
-    addBtn.disabled=false; rememberCake({...V.cake,code}); renderDelZone(); draw();
+    addBtn.disabled=false; rememberCake({...V.cake,code}); renderDelZone(); layoutBoard();
     loadTops(); const t=setInterval(()=>{ if(document.visibilityState==="visible"&&!composeEl) loadTops(); },8000);
     S.unsub.push(()=>clearInterval(t));
   }).catch(err=>{ if(!alive) return;
@@ -422,48 +425,104 @@ let loading=false;
 async function loadTops(){
   if(loading||!V.cake) return; loading=true;
   try{ const list=await api("listToppings",{cake:V.code});
-    const sig=JSON.stringify(list.map(t=>t.id)), changed=sig!==V.sig; V.sig=sig;
+    const sig=JSON.stringify(list.map(t=>[t.id,t.mine])), changed=sig!==V.sig; V.sig=sig;
     V.tops=list.filter(t=>SPR[t.sprite]).map(t=>({...t,x:+t.x,y:+t.y})).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
-    if(V.sel&&!V.tops.find(t=>t.id===V.sel)) V.sel=null;
-    if(changed){ renderNotes(); draw(); }
+    if(changed) layoutBoard();
   }catch(e){}
   finally{ loading=false; }
 }
+
+/* ---- pixel tier art ---- */
+const DOT=4;
+function tierURL(wd,hd,flavor,seed){
+  const F=FLAVORS[flavor]||FLAVORS.strawberry, c=document.createElement("canvas"); c.width=wd; c.height=hd;
+  const x=c.getContext("2d"), px=(i,j,col)=>{ x.fillStyle=col; x.fillRect(i,j,1,1); };
+  const L=[1,3,2,4,1,2,5,2,3,1,4,2,3,5,1,2,4,3];
+  const SPR_COL=["#ff7a9a","#7ccf6e","#ffd84d","#7d8ef0","#ffffff"];
+  for(let j=0;j<hd;j++)for(let i=0;i<wd;i++){
+    const corner=(i<2&&j<2&&i+j<2)||(i>wd-3&&j<2&&(wd-1-i)+j<2);
+    if(corner) continue;
+    const edge=i===0||i===wd-1||j===0||j===hd-1||(i===1&&j===1)||(i===wd-2&&j===1);
+    if(edge){ px(i,j,F.line); continue; }
+    const g=Math.floor((i+seed)/3), drip=3+L[g%L.length]-(((i+seed)%3===1)?0:1);
+    let col;
+    if(j<=drip){ col=j===1||j===2?(i<wd/3?F.topHi:F.top):(j===drip?F.topLo:F.top); }
+    else if(j>=hd-7&&j<=hd-5){ col=F.band; if(j===hd-6&&(i+seed)%5===2) col=SPR_COL[(Math.floor(i/5)+seed)%SPR_COL.length]; }
+    else if(j===hd-4) col=F.bandLo;
+    else if(i<=2) col=F.sideHi;
+    else if(i>=wd-4||j===hd-2) col=F.sideLo;
+    else col=F.side;
+    px(i,j,col);
+  }
+  return c.toDataURL();
+}
+function plateURL(wd){ const hd=5, c=document.createElement("canvas"); c.width=wd; c.height=hd; const x=c.getContext("2d");
+  for(let j=0;j<hd;j++)for(let i=0;i<wd;i++){ if((j===hd-1&&(i<3||i>wd-4))||(j===0&&(i===0||i===wd-1))) continue;
+    const edge=i===0||i===wd-1||j===hd-1||(j===hd-2&&(i<3||i>wd-4));
+    x.fillStyle=edge?"#8e9cb0":(j===0?"#ffffff":(j>=hd-2?"#dbe3ee":"#f4f7fb")); x.fillRect(i,j,1,1); }
+  return c.toDataURL(); }
+function topperURL(){ if(urlCache.topper) return urlCache.topper;
+  const parts=["strawberry","candle","candle","strawberry"].map(id=>SPR[id]), gap=2;
+  const w=parts.reduce((a,s)=>a+s.w,0)+gap*(parts.length-1), h=Math.max(...parts.map(s=>s.h));
+  const c=document.createElement("canvas"); c.width=w; c.height=h; const x=c.getContext("2d"); let ox=0;
+  parts.forEach(s=>{ s.px.forEach(([i,j,col])=>{ x.fillStyle=`rgb(${col})`; x.fillRect(ox+i,h-s.h+j,1,1); }); ox+=s.w+gap; });
+  urlCache.topperW=w; return (urlCache.topper=c.toDataURL()); }
+
+/* ---- board layout ---- */
+let resizeT; window.addEventListener("resize",()=>{ clearTimeout(resizeT); resizeT=setTimeout(()=>{ if(V.board&&document.body.contains(V.board)) layoutBoard(); },150); });
+function layoutBoard(){
+  const b=V.board; if(!b) return;
+  const flavor=V.cake?V.cake.flavor:"strawberry";
+  const avail=Math.max(260,b.clientWidth||700);
+  const CW=avail<480?96:118, CH=Math.round(CW*1.28), GAP=10, PAD=18;
+  b.style.setProperty("--cw",CW+"px"); b.style.setProperty("--ch",CH+"px");
+  const items=[...V.tops,{id:"__add"}];
+  const maxPer=Math.max(1,Math.floor((avail-2*PAD+GAP)/(CW+GAP)));
+  const tiers=[]; let i=0, k=0, start=maxPer>=5?2:1;
+  while(i<items.length){ const cap=Math.min(maxPer,start+k); tiers.push(items.slice(i,i+cap)); i+=cap; k++; }
+  const snap=v=>Math.floor(v/DOT)*DOT;
+  let prevW=0;
+  const widths=tiers.map(t=>{ let w=t.length*CW+(t.length-1)*GAP+2*PAD; w=Math.max(w,CW*1.6+2*PAD,prevW+32); w=snap(Math.min(w,avail)); prevW=w; return w; });
+  const topper=el("img",{class:"topper",src:topperURL(),alt:"",style:`width:${urlCache.topperW*DOT}px`});
+  const frag=[topper];
+  tiers.forEach((t,ti)=>{
+    const w=widths[ti], h=snap(CH+48), wd=w/DOT, hd=h/DOT;
+    const tier=el("div",{class:"tier",style:`width:${w}px;height:${h}px;background-image:url(${tierURL(wd,hd,flavor,ti*7)})`});
+    t.forEach(item=>tier.append(item.id==="__add"?addCard():ornament(item)));
+    frag.push(tier);
+  });
+  frag.push(el("div",{class:"plate",style:`width:${Math.min(avail,widths[widths.length-1]+48)}px;height:${5*DOT}px;background-image:url(${plateURL(Math.min(avail,widths[widths.length-1]+48)/DOT|0)})`}));
+  b.replaceChildren(...frag);
+  V.count.textContent=V.tops.length?`토핑 ${V.tops.length}개`:"아직 토핑이 없어요";
+  syncAllBtn();
+}
+function syncAllBtn(){ if(!V.allBtn) return; V.allBtn.hidden=!V.tops.length;
+  V.allBtn.textContent=V.tops.length&&V.flipped.size>=V.tops.length?"모두 앞면으로":"모두 뒤집어 읽기"; }
+function setFlip(card,on){ card.classList.toggle("flipped",on); card.setAttribute("aria-pressed",String(on)); }
+function ornament(t){
+  const len=(t.text||"").length, fs=len<40?19:len<90?16:14;
+  const name=t.name||"익명";
+  const del=(t.mine||(V.cake&&V.cake.mine))?el("button",{class:"orn-del",type:"button","aria-label":"메시지 지우기",onclick:e=>{ e.stopPropagation();
+      if(del.dataset.armed){ api("deleteTopping",{id:t.id}).then(()=>{ V.sig=""; V.flipped.delete(t.id); toast("메시지를 지웠어요"); loadTops(); }).catch(err=>toast(errMsg(err,"지우지 못했어요"))); }
+      else { del.dataset.armed="1"; del.textContent="지울까요?"; setTimeout(()=>{ delete del.dataset.armed; del.textContent="✕"; },3000); } }},"✕"):null;
+  const card=el("div",{class:"orn",role:"button",tabindex:"0","aria-pressed":"false","aria-label":`${name}의 메시지 카드`,style:`--n-bg:${noteColor(t.note)};--rot:${((t.id||"").charCodeAt(0)%5-2)*0.8}deg`,
+      onclick:()=>{ const on=!card.classList.contains("flipped"); on?V.flipped.add(t.id):V.flipped.delete(t.id); setFlip(card,on); syncAllBtn(); },
+      onkeydown:e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); card.click(); } }},
+    el("div",{class:"orn-inner"},
+      el("div",{class:"face front"},el("span",{class:"hook"}),el("img",{src:spriteURL(t.sprite,5),alt:SPR[t.sprite].ko}),
+        el("span",{class:"from",text:"From."}),el("b",{text:name})),
+      el("div",{class:"face back"},el("div",{class:"msg",style:`font-size:${fs}px`,text:t.text||""}),
+        el("div",{class:"sig"},el("span",{text:"– "+name}),del))));
+  card.dataset.id=t.id; if(V.flipped.has(t.id)) setFlip(card,true);
+  return card;
+}
+function addCard(){ return el("button",{class:"orn add",type:"button",disabled:!V.cake,onclick:()=>openCompose()},
+  el("span",{class:"plus",text:"＋"}),el("span",{text:"토핑 올리기"})); }
 function inCake(x,y){ if(x<0||y<0||x>=W||y>=H) return false; const m=buildBase(V.cake?V.cake.flavor:"strawberry").mask; return !!m[y*W+x] && y>=36; }
-function hitTop(x,y){ const list=[...V.tops].sort((a,b)=>b.y-a.y);
-  return list.find(t=>{ const b=spriteBox(t); return x>=b.x&&x<b.x+b.w&&y>=b.y&&y<b.y+b.h; }); }
 function findFreeSpot(){ let best=null,bestD=-1;
   for(let i=0;i<300;i++){ const x=24+Math.floor(Math.random()*112), y=38+Math.floor(Math.random()*52); if(!inCake(x,y)) continue;
     const d=V.tops.length?Math.min(...V.tops.map(t=>Math.hypot(t.x-x,(t.y-y)*1.4))):99; if(d>bestD){bestD=d;best={x,y};} if(d>16) break; }
   return best||{x:80,y:50}; }
-function draw(){ if(!V.canvas) return; paintCake(V.canvas,V.cake?V.cake.flavor:"strawberry",V.tops,{sel:V.sel,ghost:V.ghost}); drawBubble(); }
-function select(id){ V.sel=id; draw(); V.notes&&V.notes.querySelectorAll(".note").forEach(n=>n.classList.toggle("sel",n.dataset.id===id)); }
-function drawBubble(){ const old=V.stage&&V.stage.querySelector(".bubble"); if(old) old.remove(); if(!V.sel) return;
-  const t=V.tops.find(x=>x.id===V.sel); if(!t) return; const s=SPR[t.sprite];
-  const sw=V.stage.clientWidth, px=t.x/W*sw, py=(t.y-s.h+1)/H*V.stage.clientHeight;
-  const bw=Math.min(260,sw*.8), left=Math.max(bw/2+4,Math.min(sw-bw/2-4,px));
-  const b=el("div",{class:"bubble",style:`left:${left}px;top:${py}px;--b-bg:${noteColor(t.note)};--tail:${Math.max(14,Math.min(bw-14,bw/2+(px-left)))}px`},
-    el("button",{class:"x",type:"button","aria-label":"닫기",onclick:e=>{e.stopPropagation();select(null);}},"✕"),
-    el("div",{class:"who"},el("img",{src:spriteURL(t.sprite),alt:""}),el("span",{text:t.name||"익명"})),
-    el("div",{class:"msg",text:t.text||""}));
-  V.stage.append(b);
-  if(py<b.offsetHeight+12){ b.style.transform="translate(-50%, 12px)"; b.style.top=((t.y+3)/H*V.stage.clientHeight)+"px"; b.style.setProperty("--tail","-999px"); }
-}
-window.addEventListener("resize",()=>{ if(V.sel) drawBubble(); });
-function renderNotes(){
-  V.count.textContent=`토핑 ${V.tops.length}개`;
-  V.empty.hidden=V.tops.length>0;
-  V.notes.replaceChildren(...V.tops.map(t=>{
-    const n=el("article",{class:"note"+(t.id===V.sel?" sel":""),style:`--n-bg:${noteColor(t.note)}`,tabindex:"0",
-      onclick:()=>{ select(t.id); V.stage.scrollIntoView({behavior:"smooth",block:"center"}); },
-      onkeydown:e=>{ if(e.key==="Enter") n.click(); }},
-      el("div",{class:"who"},el("img",{src:spriteURL(t.sprite),alt:SPR[t.sprite].ko}),el("span",{text:t.name||"익명"})),
-      el("div",{class:"msg",text:t.text||""}),
-      el("div",{class:"meta"},el("span",{text:fmtDate(t.createdAt)}),
-        (t.mine||(V.cake&&V.cake.mine))?el("button",{class:"del",type:"button",onclick:e=>{ e.stopPropagation(); confirmInline(e.target,"지울까요?",async()=>{
-          try{ await api("deleteTopping",{id:t.id}); V.sig=""; await loadTops(); toast("메시지를 지웠어요"); }catch(err){ toast(errMsg(err,"지우지 못했어요")); } }); }},"지우기"):null));
-    n.dataset.id=t.id; return n; }));
-}
 function confirmInline(btn,label,fn){ const wrap=el("span",{},el("span",{text:label+" "}),
     el("button",{class:"del",type:"button",onclick:e=>{e.stopPropagation();fn();}},"네"),el("span",{text:" · "}),
     el("button",{class:"del",type:"button",onclick:e=>{e.stopPropagation();wrap.replaceWith(btn);}},"아니요"));
@@ -476,18 +535,21 @@ function renderDelZone(){ const z=V.delZone; z.replaceChildren(); z.hidden=!(V.c
 
 /* ===================== compose ===================== */
 let composeEl=null;
-function closeCompose(){ if(composeEl){ composeEl.remove(); composeEl=null; } if(V.ghost){ V.ghost=null; draw(); } }
-function openCompose(x,y){
+function closeCompose(){ if(composeEl){ composeEl.remove(); composeEl=null; } }
+function openCompose(){
   if(!V.cake){ toast("케이크를 불러오는 중이에요"); return; }
-  closeCompose(); select(null);
+  closeCompose();
   const st={sprite:lsGet("lastSprite")&&SPR[lsGet("lastSprite")]?lsGet("lastSprite"):"strawberry",note:"cream"};
-  V.ghost={x,y,sprite:st.sprite}; draw();
+  const preview=el("img",{class:"pv-img",src:spriteURL(st.sprite,5),alt:""}), pvName=el("b",{text:lsGet("lastName")||"이름"});
+  const pv=el("div",{class:"orn pv",style:`--n-bg:${noteColor(st.note)}`},el("div",{class:"orn-inner"},
+    el("div",{class:"face front"},el("span",{class:"hook"}),preview,el("span",{class:"from",text:"From."}),pvName)));
   const picks=SPRITES.map(s=>{ const b=el("button",{type:"button",class:"pick","aria-pressed":String(s.id===st.sprite),onclick:()=>{
-      st.sprite=s.id; V.ghost.sprite=s.id; draw(); picks.forEach(p=>p.setAttribute("aria-pressed",String(p.dataset.id===s.id))); }},
+      st.sprite=s.id; preview.src=spriteURL(s.id,5); picks.forEach(p=>p.setAttribute("aria-pressed",String(p.dataset.id===s.id))); }},
       el("img",{src:spriteURL(s.id),alt:""}),el("span",{text:s.ko})); b.dataset.id=s.id; return b; });
-  const sw=NOTES.map(n=>{ const b=el("button",{type:"button",class:"swatch","aria-label":n.ko+" 쪽지","aria-pressed":String(n.id===st.note),style:`background:${n.c}`,
-      onclick:()=>{ st.note=n.id; sw.forEach(x=>x.setAttribute("aria-pressed",String(x.dataset.id===n.id))); }}); b.dataset.id=n.id; return b; });
+  const sw=NOTES.map(n=>{ const b=el("button",{type:"button",class:"swatch","aria-label":n.ko+" 카드","aria-pressed":String(n.id===st.note),style:`background:${n.c}`,
+      onclick:()=>{ st.note=n.id; pv.style.setProperty("--n-bg",n.c); sw.forEach(x=>x.setAttribute("aria-pressed",String(x.dataset.id===n.id))); }}); b.dataset.id=n.id; return b; });
   const nameIn=el("input",{id:"cname",maxlength:"20",placeholder:"예: 3반 이서준",value:lsGet("lastName")||"",autocomplete:"off"});
+  nameIn.addEventListener("input",()=>pvName.textContent=nameIn.value.trim()||"이름");
   const msgIn=el("textarea",{id:"cmsg",maxlength:"300",placeholder:`${V.cake.to}에게 하고 싶은 말을 적어 주세요`});
   const left=el("span",{class:"hint",text:"0 / 300"}); msgIn.addEventListener("input",()=>left.textContent=`${msgIn.value.length} / 300`);
   const save=el("button",{class:"btn primary",type:"submit"},"토핑 올리기");
@@ -495,16 +557,17 @@ function openCompose(x,y){
       const name=nameIn.value.trim(), text=msgIn.value.trim();
       if(!text){ msgIn.focus(); toast("메시지를 적어 주세요"); return; }
       save.disabled=true; save.textContent="올리는 중…";
-      try{ await api("addTopping",{cake:V.code,sprite:st.sprite,note:st.note,x:V.ghost.x,y:V.ghost.y,name:name||"익명",text});
+      const p=findFreeSpot();
+      try{ await api("addTopping",{cake:V.code,sprite:st.sprite,note:st.note,x:p.x,y:p.y,name:name||"익명",text});
         lsSet("lastName",name); lsSet("lastSprite",st.sprite); closeCompose(); V.sig=""; await loadTops(); toast("토핑을 올렸어요!"); }
       catch(err){ save.disabled=false; save.textContent="토핑 올리기"; toast(errMsg(err,"올리지 못했어요. 다시 시도해 주세요")); } }},
     el("div",{class:"row",style:"justify-content:space-between"},el("h2",{text:"메시지 토핑 만들기"}),
       el("button",{class:"btn small ghost",type:"button",onclick:closeCompose},"닫기")),
-    el("div",{class:"field"},el("label",{text:"토핑 고르기"}),el("div",{class:"picks"},picks)),
-    el("div",{class:"field"},el("label",{for:"cmsg",text:"메시지"}),msgIn,left),
-    el("div",{class:"field"},el("label",{for:"cname",text:"보내는 사람"}),nameIn),
-    el("div",{class:"field"},el("label",{text:"쪽지 색"}),el("div",{class:"swatches"},sw)),
-    el("div",{class:"row"},save,el("span",{class:"hint",text:"케이크의 고른 자리에 올라가요."})));
+    el("div",{class:"compose-top"},pv,el("div",{class:"field",style:"flex:1;min-width:0"},el("label",{text:"토핑 고르기"}),el("div",{class:"picks"},picks))),
+    el("div",{class:"field"},el("label",{for:"cmsg",text:"메시지 (카드 뒷면)"}),msgIn,left),
+    el("div",{class:"field"},el("label",{for:"cname",text:"보내는 사람 (카드 앞면)"}),nameIn),
+    el("div",{class:"field"},el("label",{text:"카드 색"}),el("div",{class:"swatches"},sw)),
+    el("div",{class:"row"},save,el("span",{class:"hint",text:"케이크 맨 아래 층에 걸려요."})));
   composeEl=el("div",{class:"overlay",onclick:e=>{ if(e.target===composeEl) closeCompose(); }},form);
   document.addEventListener("keydown",escClose);
   document.body.append(composeEl); setTimeout(()=>msgIn.focus(),50);
