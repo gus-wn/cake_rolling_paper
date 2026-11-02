@@ -7,17 +7,21 @@
 <meta name="description" content="도트 케이크 위에 메시지를 토핑처럼 올리는 온라인 롤링페이퍼">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gaegu:wght@400;700&family=Gowun+Dodum&family=Silkscreen&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
+/* 제목: 배달의민족 꾸불림체 / 본문: 나눔스퀘어라운드 */
+@font-face{font-family:"KkuBulLim";src:url("https://cdn.jsdelivr.net/gh/projectnoonnu/2410-1@1.0/BMkkubulimTTF-Regular.woff2") format("woff2"),url("https://cdn.jsdelivr.net/gh/yellopencil/yellopencil-webfonts@v1.11.0/fonts/kkubulim/BMKkubulimTTF.ttf") format("truetype");font-weight:400;font-display:swap}
+@font-face{font-family:"NanumSquareRound";src:url("fonts/NanumSquareRound.woff") format("woff");font-weight:400 800;font-display:swap}
 /* Layout: grid-paper desk → one centered column; the pixel cake is the stage, notes pile up below it */
 :root{
   --bg:#fffafb; --grid:#f4e6ec; --ink:#4a3640; --muted:#8f7783; --line:#ecd9e1;
   --panel:#ffffff; --accent:#ff7a9a; --accent-ink:#ffffff; --mint:#6fc3a0; --soft:#fff0f4;
   --note-ink:#4a3640; --danger:#d9485f;
-  --f-display:"Jua","Gowun Dodum",system-ui,sans-serif;
-  --f-body:"Gowun Dodum",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
-  --f-hand:"Gaegu","Gowun Dodum",cursive;
+  --f-title:"KkuBulLim","NanumSquareRound","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --f-display:"NanumSquareRound","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --f-body:"NanumSquareRound",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --f-hand:"NanumSquareRound","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
   --f-pixel:"Silkscreen",ui-monospace,monospace;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
@@ -42,11 +46,11 @@ body{
   padding-block:20px 60px;
 }
 .wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
-h1,h2,h3{font-family:var(--f-display);font-weight:400;margin:0;text-wrap:balance;line-height:1.25}
+h1,h2,h3{font-family:var(--f-title);font-weight:400;letter-spacing:.01em;margin:0;text-wrap:balance;line-height:1.25}
 .pixel-label{font-family:var(--f-pixel);font-size:11px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
 button,input,textarea{font:inherit;color:inherit}
 .btn{
-  font-family:var(--f-display);font-size:16px;border:2px solid var(--ink);background:var(--panel);
+  font-family:var(--f-display);font-weight:700;font-size:15px;border:2px solid var(--ink);background:var(--panel);
   padding:8px 16px;border-radius:8px;box-shadow:0 3px 0 var(--ink);cursor:pointer;
   transition:transform .08s,box-shadow .08s;display:inline-flex;align-items:center;gap:6px;white-space:nowrap
 }
@@ -59,12 +63,12 @@ button,input,textarea{font:inherit;color:inherit}
 .btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
 .panel{background:var(--panel);border:2px solid var(--ink);border-radius:12px;padding:18px;box-shadow:4px 4px 0 var(--line)}
 .field{display:flex;flex-direction:column;gap:6px}
-.field label{font-family:var(--f-display);font-size:15px}
+.field label{font-family:var(--f-display);font-weight:700;font-size:14px}
 .field input,.field textarea{
   border:2px solid var(--line);border-radius:8px;background:var(--bg);padding:9px 12px;outline:none;width:100%
 }
 .field input:focus,.field textarea:focus{border-color:var(--accent)}
-.field textarea{font-family:var(--f-hand);font-size:20px;line-height:1.4;resize:vertical;min-height:110px}
+.field textarea{font-family:var(--f-hand);font-size:16px;line-height:1.6;resize:vertical;min-height:110px}
 .hint{font-size:13px;color:var(--muted)}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .chips{display:flex;gap:6px;flex-wrap:wrap}
@@ -91,7 +95,7 @@ button,input,textarea{font:inherit;color:inherit}
 .tile{background:var(--panel);border:2px solid var(--ink);border-radius:12px;padding:10px;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:2px;box-shadow:0 3px 0 var(--ink);transition:transform .08s}
 .tile:hover{transform:translateY(-2px)}
 .tile img{width:100%;image-rendering:pixelated;aspect-ratio:4/3}
-.tile b{font-family:var(--f-display);font-weight:400;font-size:17px}
+.tile b{font-family:var(--f-title);font-weight:400;font-size:20px}
 .tile span{font-size:12px;color:var(--muted)}
 .empty{text-align:center;color:var(--muted);padding:24px 10px;border:2px dashed var(--line);border-radius:12px}
 .findrow{display:flex;gap:8px}
@@ -101,7 +105,7 @@ button,input,textarea{font:inherit;color:inherit}
 .topbar{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}
 .cake-head{text-align:center;display:flex;flex-direction:column;gap:4px;align-items:center}
 .cake-head h1{font-size:clamp(28px,6vw,42px)}
-.cake-head .sub{font-family:var(--f-hand);font-size:22px;color:var(--muted)}
+.cake-head .sub{font-family:var(--f-title);font-size:24px;color:var(--muted)}
 .board{display:flex;flex-direction:column;align-items:center;width:100%;padding-top:6px}
 .topper{display:block;image-rendering:pixelated;max-width:60%;margin-bottom:-2px;position:relative;z-index:2}
 .tier{display:flex;justify-content:center;align-items:flex-start;gap:10px;padding:34px 18px 0;background-size:100% 100%;background-repeat:no-repeat;image-rendering:pixelated;max-width:100%;margin-top:-4px;position:relative}
@@ -117,11 +121,11 @@ button,input,textarea{font:inherit;color:inherit}
 .front{align-items:center;justify-content:center;gap:1px;padding:12px 6px 8px}
 .front img{height:44%;width:auto;max-width:80%;image-rendering:pixelated}
 .front .from{font-family:var(--f-pixel);font-size:9px;letter-spacing:.12em;opacity:.55;margin-top:6px}
-.front b{font-family:var(--f-display);font-weight:400;font-size:15px;line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.front b{font-family:var(--f-display);font-weight:800;font-size:14px;line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hook{position:absolute;top:-8px;left:50%;width:13px;height:13px;border:2px solid #4a3640;border-radius:50%;background:#fff;transform:translateX(-50%)}
 .back{transform:rotateY(180deg);padding:9px 9px 6px;justify-content:space-between;gap:4px}
-.back .msg{font-family:var(--f-hand);line-height:1.22;white-space:pre-wrap;word-break:break-word;overflow:auto;flex:1;min-height:0}
-.back .sig{display:flex;justify-content:space-between;align-items:center;gap:4px;font-family:var(--f-display);font-size:12px}
+.back .msg{font-family:var(--f-hand);line-height:1.45;letter-spacing:-.01em;white-space:pre-wrap;word-break:break-word;overflow:auto;flex:1;min-height:0}
+.back .sig{display:flex;justify-content:space-between;align-items:center;gap:4px;font-family:var(--f-display);font-weight:700;font-size:11px}
 .back .sig span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.75}
 .orn-del{border:0;background:none;color:#a33c55;cursor:pointer;font-size:11px;padding:0 2px;flex:none;font-family:var(--f-body)}
 .orn.add{border:2px dashed rgba(74,54,64,.55);border-radius:10px;background:rgba(255,255,255,.6);color:#4a3640;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-family:var(--f-display);font-size:14px;perspective:none}
@@ -136,7 +140,7 @@ button,input,textarea{font:inherit;color:inherit}
 .share .linkbox{display:flex;gap:8px}
 .share input{flex:1;min-width:0;border:2px solid var(--line);border-radius:8px;background:var(--bg);padding:7px 10px;font-size:13px}
 .code{font-family:var(--f-pixel);font-size:18px;letter-spacing:.15em;color:var(--accent)}
-.count{font-family:var(--f-display);font-size:18px}
+.count{font-family:var(--f-title);font-size:22px}
 .danger-zone{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;font-size:13px}
 .linkish{background:none;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;font-size:13px}
 
@@ -154,6 +158,15 @@ button,input,textarea{font:inherit;color:inherit}
 .swatch[aria-pressed="true"]{box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--accent)}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:999px;font-size:14px;z-index:60;max-width:calc(100% - 32px)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+#print-root{display:none}
+@page{size:257mm 364mm;margin:0}
+@media print{
+  html,body{padding:0!important;margin:0!important;background:#fff!important}
+  body>*:not(#print-root){display:none!important}
+  #print-root{display:block}
+  #print-root img{display:block;width:257mm;height:364mm;max-width:none;break-after:page;page-break-after:always}
+  #print-root img:last-child{break-after:auto;page-break-after:auto}
+}
 </style>
 <script src="config.js"></script>
 </head>
@@ -332,7 +345,7 @@ function renderHome(){
     el("div",{class:"hero-text"},
       el("div",{class:"pixel-label",text:"Rolling paper cake"}),
       el("h1",{},"마음을 ",el("em",{text:"토핑"}),"처럼 올려요"),
-      el("p",{text:"케이크를 하나 굽고 링크를 보내면, 친구들이 메시지를 하나씩 토핑으로 올려 줘요. 다 모이면 A4로 저장해서 출력할 수 있어요."})),
+      el("p",{text:"케이크를 하나 굽고 링크를 보내면, 친구들이 메시지를 하나씩 토핑으로 올려 줘요. 다 모이면 B4 크기로 바로 출력할 수 있어요."})),
     heroCanvas));
   if(!API_URL) app.append(el("div",{class:"banner",text:ERR.no_api+" 방법은 README에 있어요."}));
 
@@ -385,8 +398,9 @@ function renderCake(code){
       const open=V.flipped.size<V.tops.length; V.flipped=new Set(open?V.tops.map(t=>t.id):[]);
       board.querySelectorAll(".orn[data-id]").forEach(c=>setFlip(c,open)); syncAllBtn(); }},"모두 뒤집어 읽기");
   const addBtn=el("button",{class:"btn primary",type:"button",disabled:true,onclick:()=>openCompose()},"＋ 메시지 토핑 올리기");
-  const pngBtn=el("button",{class:"btn",type:"button",onclick:()=>exportFile("png")},"이미지로 저장");
-  const pdfBtn=el("button",{class:"btn",type:"button",onclick:()=>exportFile("pdf")},"A4 PDF로 저장");
+  const printBtn=el("button",{class:"btn",type:"button",onclick:()=>exportFile("print")},"🖨 B4로 출력하기");
+  const pdfBtn=el("button",{class:"btn",type:"button",onclick:()=>exportFile("pdf")},"B4 PDF 저장");
+  const pngBtn=el("button",{class:"btn",type:"button",onclick:()=>exportFile("png")},"이미지 저장");
   const linkIn=el("input",{id:"sharelink",readonly:true,value:shareLink(code),"aria-label":"공유 링크",onfocus:e=>e.target.select()});
   const share=el("section",{class:"panel share"},
     el("div",{class:"row",style:"justify-content:space-between"},el("h3",{text:"친구들에게 링크 보내기"}),el("span",{},"코드 ",el("span",{class:"code",text:code.toUpperCase()}))),
@@ -395,7 +409,7 @@ function renderCake(code){
       const c=V.cake||{}; copyText(`🎂 ${c.to||""}에게 주는 롤링페이퍼 케이크에 메시지 토핑을 올려 주세요!\n${shareLink(code)}`); }},"초대 문구까지 복사하기"),
     el("div",{class:"hint",text:"링크를 받은 사람은 로그인 없이 바로 메시지를 올릴 수 있어요."}));
   const delZone=el("div",{class:"danger-zone",hidden:true});
-  Object.assign(V,{head,board,count,allBtn,addBtn,exportBtns:[pngBtn,pdfBtn],delZone});
+  Object.assign(V,{head,board,count,allBtn,addBtn,exportBtns:[printBtn,pdfBtn,pngBtn],delZone});
 
   app.append(
     el("div",{class:"topbar"},el("button",{class:"btn small ghost",type:"button",onclick:()=>location.hash=""},"← 처음으로"),
@@ -403,7 +417,7 @@ function renderCake(code){
     head,
     el("div",{class:"board-tools"},count,el("span",{class:"hint",text:"카드를 누르면 뒤집혀서 메시지가 보여요"}),allBtn),
     board,
-    el("div",{class:"actions"},addBtn,pngBtn,pdfBtn), share, delZone);
+    el("div",{class:"actions"},addBtn,printBtn,pdfBtn,pngBtn), share, delZone);
   layoutBoard();
 
   if(lsGet("justMade")===code){ lsSet("justMade",""); setTimeout(()=>toast("케이크가 구워졌어요! 링크를 친구들에게 보내 주세요"),300); }
@@ -500,7 +514,7 @@ function syncAllBtn(){ if(!V.allBtn) return; V.allBtn.hidden=!V.tops.length;
   V.allBtn.textContent=V.tops.length&&V.flipped.size>=V.tops.length?"모두 앞면으로":"모두 뒤집어 읽기"; }
 function setFlip(card,on){ card.classList.toggle("flipped",on); card.setAttribute("aria-pressed",String(on)); }
 function ornament(t){
-  const len=(t.text||"").length, fs=len<40?19:len<90?16:14;
+  const len=(t.text||"").length, fs=len<40?15:len<90?13:12;
   const name=t.name||"익명";
   const del=(t.mine||(V.cake&&V.cake.mine))?el("button",{class:"orn-del",type:"button","aria-label":"메시지 지우기",onclick:e=>{ e.stopPropagation();
       if(del.dataset.armed){ api("deleteTopping",{id:t.id}).then(()=>{ V.sig=""; V.flipped.delete(t.id); toast("메시지를 지웠어요"); loadTops(); }).catch(err=>toast(errMsg(err,"지우지 못했어요"))); }
@@ -574,7 +588,10 @@ function openCompose(){
 }
 function escClose(e){ if(e.key==="Escape"){ closeCompose(); document.removeEventListener("keydown",escClose); } }
 
-/* ===================== export (PNG / A4 PDF) ===================== */
+/* ===================== export (B4 print / PDF / PNG) ===================== */
+const B4 = {wMM:257, hMM:364, PW:1520, PH:2153};
+const FT = '"KkuBulLim", "NanumSquareRound", sans-serif';
+const FB = '"NanumSquareRound", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
 function wrapLines(ctx,text,maxW){ const out=[];
   String(text).split("\n").forEach(par=>{ let line="";
     const words=par.split(/(\s+)/);
@@ -588,55 +605,69 @@ function wrapLines(ctx,text,maxW){ const out=[];
   return out; }
 function rr(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
 function paper(ctx,w,h){ ctx.fillStyle="#fffbfc"; ctx.fillRect(0,0,w,h); ctx.strokeStyle="#f5e6ec"; ctx.lineWidth=1;
-  for(let x=0.5;x<w;x+=31){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
-  for(let y=0.5;y<h;y+=31){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); } }
-async function buildPages(pageH){
-  await Promise.all(["40px Jua","28px Gaegu","20px Silkscreen"].map(f=>document.fonts.load(f).catch(()=>{})));
-  const PW=1240,M=70,GAP=26,COLS=3,colW=(PW-2*M-GAP*(COLS-1))/COLS, PAD=22, LH=36;
-  const meas=document.createElement("canvas").getContext("2d"); meas.font='28px Gaegu, cursive';
-  const cards=V.tops.map(t=>{ const lines=wrapLines(meas,t.text||"",colW-PAD*2); return {t,lines,h:PAD+40+8+lines.length*LH+PAD}; });
-  const pages=[{items:[],first:true}]; let y=1060, cur=pages[0];
+  for(let x=0.5;x<w;x+=38){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
+  for(let y=0.5;y<h;y+=38){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); } }
+async function buildPages(paged){
+  await Promise.all([`96px ${FT}`,`24px ${FB}`,`bold 24px ${FB}`,"24px Silkscreen"].map(f=>document.fonts.load(f,"가나다Aa").catch(()=>{})));
+  await document.fonts.ready.catch(()=>{});
+  const PW=B4.PW, PH=B4.PH, M=84, GAP=26, COLS=4, colW=(PW-2*M-GAP*(COLS-1))/COLS, PAD=22, LH=38, TOP=30, HEAD=48;
+  const meas=document.createElement("canvas").getContext("2d"); meas.font=`24px ${FB}`;
+  const cards=V.tops.map(t=>{ const lines=wrapLines(meas,t.text||"",colW-PAD*2); return {t,lines,h:TOP+HEAD+10+lines.length*LH+PAD}; });
+  const START=1240;
+  const pages=[{items:[],first:true,endY:START}]; let y=START, cur=pages[0];
   for(let i=0;i<cards.length;i+=COLS){ const row=cards.slice(i,i+COLS), rh=Math.max(...row.map(c=>c.h));
-    if(pageH&&y+rh>pageH-M&&cur.items.length+(cur.first?1:0)>0){ cur={items:[],first:false}; pages.push(cur); y=M+70; }
+    if(paged&&y+rh>PH-M&&(cur.items.length||cur.first)){ cur={items:[],first:false}; pages.push(cur); y=M+90; }
     row.forEach((c,j)=>cur.items.push({...c,x:M+j*(colW+GAP),y})); y+=rh+GAP; cur.endY=y; }
   const cakeC=document.createElement("canvas"); paintCake(cakeC,V.cake.flavor,V.tops);
-  return pages.map((p,pi)=>{ const h=pageH||Math.max(1754,(p.endY||1060)+M); const c=document.createElement("canvas"); c.width=PW; c.height=h;
-    const x=c.getContext("2d"); paper(x,PW,h); x.textAlign="center"; x.textBaseline="alphabetic"; x.fillStyle="#4a3640";
+  return pages.map((p,pi)=>{ const h=paged?PH:Math.max(PH,p.endY+M); const c=document.createElement("canvas"); c.width=PW; c.height=h;
+    const x=c.getContext("2d"); paper(x,PW,h); x.textAlign="center"; x.textBaseline="alphabetic";
     if(p.first){
-      x.fillStyle="#b08a9a"; x.font='22px Silkscreen, monospace'; x.fillText("ROLLING PAPER CAKE",PW/2,120);
-      x.fillStyle="#4a3640"; x.font='76px Jua, sans-serif'; x.fillText(`${V.cake.to}에게`,PW/2,210);
-      if(V.cake.title){ x.font='40px Gaegu, cursive'; x.fillStyle="#8f7783"; x.fillText(V.cake.title,PW/2,262); }
-      x.imageSmoothingEnabled=false; x.drawImage(cakeC,140,280,960,720);
-      x.fillStyle="#4a3640"; x.font='28px Jua, sans-serif'; x.fillText(`토핑 ${V.tops.length}개 · ${fmtDate(Date.now())}`,PW/2,1030);
-    } else { x.font='26px Jua, sans-serif'; x.fillStyle="#8f7783"; x.fillText(`${V.cake.to}에게 · ${pi+1}쪽`,PW/2,M+20); }
+      x.fillStyle="#b08a9a"; x.font='24px Silkscreen, monospace'; x.fillText("ROLLING PAPER CAKE",PW/2,150);
+      x.fillStyle="#4a3640"; x.font=`104px ${FT}`; x.fillText(`${V.cake.to}에게`,PW/2,270);
+      if(V.cake.title){ x.font=`50px ${FT}`; x.fillStyle="#9a7f8c"; x.fillText(V.cake.title,PW/2,345); }
+      x.imageSmoothingEnabled=false; x.drawImage(cakeC,(PW-1040)/2,370,1040,780);
+      x.fillStyle="#4a3640"; x.font=`bold 28px ${FB}`; x.fillText(`메시지 ${V.tops.length}개 · ${fmtDate(Date.now())}`,PW/2,1190);
+    } else { x.font=`38px ${FT}`; x.fillStyle="#9a7f8c"; x.fillText(`${V.cake.to}에게 · ${pi+1}쪽`,PW/2,M+30); }
     x.textAlign="left";
     p.items.forEach(({t,lines,h:ch,x:cx,y:cy})=>{
-      rr(x,cx+5,cy+5,colW,ch,14); x.fillStyle="rgba(74,54,64,.18)"; x.fill();
-      rr(x,cx,cy,colW,ch,14); x.fillStyle=noteColor(t.note); x.fill(); x.lineWidth=2.5; x.strokeStyle="#4a3640"; x.stroke();
-      const s=SPR[t.sprite], sc=4; x.imageSmoothingEnabled=false;
-      s.px.forEach(([px,py,col])=>{ x.fillStyle=`rgb(${col})`; x.fillRect(cx+PAD+px*sc,cy+PAD+py*sc+(40-s.h*sc)/2,sc,sc); });
-      x.fillStyle="#4a3640"; x.font='26px Jua, sans-serif'; x.textBaseline="middle"; x.fillText(t.name||"익명",cx+PAD+s.w*sc+12,cy+PAD+20);
-      x.textBaseline="alphabetic"; x.font='28px Gaegu, cursive';
-      lines.forEach((l,li)=>x.fillText(l,cx+PAD,cy+PAD+40+8+LH*(li+1)-8));
+      rr(x,cx+5,cy+5,colW,ch,16); x.fillStyle="rgba(74,54,64,.16)"; x.fill();
+      rr(x,cx,cy,colW,ch,16); x.fillStyle=noteColor(t.note); x.fill(); x.lineWidth=2.5; x.strokeStyle="#4a3640"; x.stroke();
+      x.beginPath(); x.arc(cx+colW/2,cy,9,0,Math.PI*2); x.fillStyle="#fff"; x.fill(); x.stroke();
+      const s=SPR[t.sprite], sc=5; x.imageSmoothingEnabled=false;
+      s.px.forEach(([px,py,col])=>{ x.fillStyle=`rgb(${col})`; x.fillRect(cx+PAD+px*sc,cy+TOP+py*sc+(HEAD-s.h*sc)/2,sc,sc); });
+      x.fillStyle="#4a3640"; x.textBaseline="middle";
+      x.font='14px Silkscreen, monospace'; x.globalAlpha=.55; x.fillText("FROM.",cx+PAD+s.w*sc+12,cy+TOP+HEAD/2-12); x.globalAlpha=1;
+      x.font=`bold 24px ${FB}`; let nm=t.name||"익명"; const nmW=colW-PAD*2-s.w*sc-12;
+      while(nm.length>1&&x.measureText(nm).width>nmW) nm=nm.slice(0,-1); if(nm!==(t.name||"익명")) nm=nm.slice(0,-1)+"…";
+      x.fillText(nm,cx+PAD+s.w*sc+12,cy+TOP+HEAD/2+10);
+      x.textBaseline="alphabetic"; x.font=`24px ${FB}`;
+      lines.forEach((l,li)=>x.fillText(l,cx+PAD,cy+TOP+HEAD+10+LH*(li+1)-10));
     });
     return c; });
 }
 function saveBlob(blob,name){ const u=URL.createObjectURL(blob), a=el("a",{href:u,download:name}); document.body.append(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),4000); }
 async function exportFile(kind){
   if(!V.cake) return;
-  V.exportBtns.forEach(b=>b.disabled=true); toast("파일을 만드는 중이에요");
+  V.exportBtns.forEach(b=>b.disabled=true); toast(kind==="print"?"출력할 종이를 준비하는 중이에요":"파일을 만드는 중이에요");
   try{
     const base=`${V.cake.to}_롤링페이퍼`.replace(/[\\/:*?"<>|]/g,"");
-    if(kind==="png"){ const [c]=await buildPages(null); const blob=await new Promise(r=>c.toBlob(r,"image/png"));
-      saveBlob(blob,base+".png"); }
-    else { if(!window.jspdf){ toast("PDF 도구를 불러오지 못했어요. 이미지로 저장해 주세요"); return; }
-      const pages=await buildPages(1754); const pdf=new window.jspdf.jsPDF({unit:"mm",format:"a4"});
-      pages.forEach((c,i)=>{ if(i) pdf.addPage(); pdf.addImage(c.toDataURL("image/jpeg",0.92),"JPEG",0,0,210,297); });
-      saveBlob(pdf.output("blob"),base+".pdf"); }
-    toast("저장했어요");
-  }catch(err){ toast("저장하지 못했어요"); }
+    if(kind==="png"){ const [c]=await buildPages(false); const blob=await new Promise(r=>c.toBlob(r,"image/png"));
+      saveBlob(blob,base+".png"); toast("저장했어요"); }
+    else if(kind==="pdf"){ if(!window.jspdf){ toast("PDF 도구를 불러오지 못했어요. 이미지로 저장해 주세요"); return; }
+      const pages=await buildPages(true); const pdf=new window.jspdf.jsPDF({unit:"mm",format:[B4.wMM,B4.hMM]});
+      pages.forEach((c,i)=>{ if(i) pdf.addPage([B4.wMM,B4.hMM]); pdf.addImage(c.toDataURL("image/jpeg",0.92),"JPEG",0,0,B4.wMM,B4.hMM); });
+      saveBlob(pdf.output("blob"),base+"_B4.pdf"); toast("저장했어요"); }
+    else {
+      const pages=await buildPages(true);
+      let root=$("#print-root"); if(root) root.remove();
+      root=el("div",{id:"print-root"}); document.body.append(root);
+      await Promise.all(pages.map(c=>new Promise(res=>{ const im=new Image(); im.onload=res; im.onerror=res; im.src=c.toDataURL("image/png"); im.alt=""; root.append(im); })));
+      setTimeout(()=>{ window.print(); },60);
+    }
+  }catch(err){ toast("만들지 못했어요. 다시 시도해 주세요"); }
   finally{ V.exportBtns.forEach(b=>b.disabled=false); }
 }
+window.addEventListener("afterprint",()=>{ const r=$("#print-root"); if(r) r.remove(); });
 
 route();
 </script>
