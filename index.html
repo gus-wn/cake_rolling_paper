@@ -130,9 +130,30 @@ button,input,textarea{font:inherit;color:inherit}
 .orn.add{border:2px dashed rgba(74,54,64,.55);border-radius:10px;background:rgba(255,255,255,.6);color:#4a3640;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-family:var(--f-display);font-size:14px;perspective:none}
 .orn.add .plus{font-size:28px;line-height:1}
 .orn.add:disabled{opacity:.5;cursor:default}
-.compose-top{display:flex;gap:14px;align-items:flex-start}
-.orn.pv{--cw:92px;--ch:118px;cursor:default;margin-top:10px}
-.orn.pv:hover{transform:none}
+.wc-sheet{gap:12px}
+.wc-stepper{display:flex;justify-content:center;gap:6px;font-size:13px;font-weight:700}
+.wc-stepper span{padding:4px 12px;border-radius:999px;border:1.5px solid var(--line);color:var(--muted)}
+.wc-stepper span.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.wc-stage{display:flex;justify-content:center;padding:12px 0 4px}
+.orn.wc{--cw:min(210px,62vw);--ch:min(270px,80vw);cursor:default}
+.orn.wc:hover{transform:none}
+.wc .front{gap:4px;padding:18px 10px 14px}
+.wc-art{height:52%!important;max-width:85%}
+.wc-empty{height:52%;width:78%;border:2px dashed rgba(74,54,64,.45);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:12px;color:#7a6470;text-align:center;padding:6px}
+.wc-empty .plus{font-size:30px;line-height:1;font-family:var(--f-title)}
+.wc .front .from{font-size:11px}
+.wc-name{font-size:18px!important}
+.wc .back{padding:14px 12px 10px}
+.wc-text{flex:1;min-height:0;width:100%;border:0;background:transparent;resize:none;outline:none;color:var(--note-ink);font-family:var(--f-hand);font-size:15px;line-height:1.55;padding:0;
+  background-image:linear-gradient(transparent calc(1.55em - 1px),rgba(74,54,64,.14) 1px);background-size:100% 1.55em;background-attachment:local}
+.wc-text::placeholder{color:rgba(74,54,64,.45)}
+.wc-count{font-weight:400;opacity:.6;font-size:11px}
+.wc-step{display:flex;flex-direction:column;gap:12px}
+.wc-step[hidden]{display:none!important}
+.wc-row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+.wc-actions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
+@keyframes pop{0%{transform:scale(.6) rotate(-8deg)}60%{transform:scale(1.08) rotate(2deg)}100%{transform:rotate(var(--rot,0deg))}}
+.orn.pop{animation:pop .6s ease-out}
 @media (prefers-reduced-motion:reduce){.orn-inner{transition:none}}
 .actions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
 .share{display:flex;flex-direction:column;gap:10px}
@@ -426,6 +447,7 @@ function renderCake(code){
     V.cake={...c, flavor:(c.flavor in FLAVORS)?c.flavor:"strawberry"};
     h1.textContent=`${V.cake.to}에게`; sub.textContent=V.cake.title||"";
     addBtn.disabled=false; rememberCake({...V.cake,code}); renderDelZone(); layoutBoard();
+    if(!V.cake.mine&&!lsGet("wrote-"+code)) setTimeout(()=>{ if(alive&&!composeEl) openCompose(); },500);
     loadTops(); const t=setInterval(()=>{ if(document.visibilityState==="visible"&&!composeEl) loadTops(); },8000);
     S.unsub.push(()=>clearInterval(t));
   }).catch(err=>{ if(!alive) return;
@@ -474,7 +496,7 @@ function plateURL(wd){ const hd=5, c=document.createElement("canvas"); c.width=w
     x.fillStyle=edge?"#8e9cb0":(j===0?"#ffffff":(j>=hd-2?"#dbe3ee":"#f4f7fb")); x.fillRect(i,j,1,1); }
   return c.toDataURL(); }
 function topperURL(){ if(urlCache.topper) return urlCache.topper;
-  const parts=["strawberry","candle","candle","strawberry"].map(id=>SPR[id]), gap=2;
+  const parts=["candle","candle","candle"].map(id=>SPR[id]), gap=3;
   const w=parts.reduce((a,s)=>a+s.w,0)+gap*(parts.length-1), h=Math.max(...parts.map(s=>s.h));
   const c=document.createElement("canvas"); c.width=w; c.height=h; const x=c.getContext("2d"); let ox=0;
   parts.forEach(s=>{ s.px.forEach(([i,j,col])=>{ x.fillStyle=`rgb(${col})`; x.fillRect(ox+i,h-s.h+j,1,1); }); ox+=s.w+gap; });
@@ -568,46 +590,76 @@ function renderDelZone(){ const z=V.delZone; z.replaceChildren(); z.hidden=!(V.c
     catch(e){ toast(errMsg(e,"지우지 못했어요")); } })});
   z.append(el("span",{class:"hint",text:"이 기기에서 만든 케이크예요. "}),b); }
 
-/* ===================== compose ===================== */
+/* ===================== compose: ① 토핑 고르기 → ② 뒷면에 편지 쓰기 ===================== */
 let composeEl=null;
-function closeCompose(){ if(composeEl){ composeEl.remove(); composeEl=null; } }
+function closeCompose(){ if(composeEl){ composeEl.remove(); composeEl=null; document.removeEventListener("keydown",escClose); } }
 function openCompose(){
   if(!V.cake){ toast("케이크를 불러오는 중이에요"); return; }
   closeCompose();
-  const st={sprite:lsGet("lastSprite")&&SPR[lsGet("lastSprite")]?lsGet("lastSprite"):"strawberry",note:"cream"};
-  const preview=el("img",{class:"pv-img",src:spriteURL(st.sprite,5),alt:""}), pvName=el("b",{text:lsGet("lastName")||"이름"});
-  const pv=el("div",{class:"orn pv",style:`--n-bg:${noteColor(st.note)}`},el("div",{class:"orn-inner"},
-    el("div",{class:"face front"},el("span",{class:"hook"}),preview,el("span",{class:"from",text:"From."}),pvName)));
-  const picks=SPRITES.map(s=>{ const b=el("button",{type:"button",class:"pick","aria-pressed":String(s.id===st.sprite),onclick:()=>{
-      st.sprite=s.id; preview.src=spriteURL(s.id,5); picks.forEach(p=>p.setAttribute("aria-pressed",String(p.dataset.id===s.id))); }},
+  const st={sprite:null,note:"cream",step:1};
+  const to=V.cake.to;
+
+  // big flip card
+  let frontArt=el("div",{class:"wc-empty"},el("span",{class:"plus",text:"?"}),el("span",{text:"아래에서 토핑을 골라 주세요"}));
+  const frontName=el("b",{class:"wc-name",text:lsGet("lastName")||"이름"});
+  const sigName=el("span",{text:"– "+(lsGet("lastName")||"이름")});
+  const msgIn=el("textarea",{id:"cmsg",class:"wc-text",maxlength:"300",placeholder:`${to}에게 하고 싶은 말을 적어 주세요`,tabindex:"-1"});
+  const left=el("span",{class:"wc-count",text:"0 / 300"});
+  const card=el("div",{class:"orn wc"},el("div",{class:"orn-inner"},
+    el("div",{class:"face front"},el("span",{class:"hook"}),frontArt,el("span",{class:"from",text:"From."}),frontName),
+    el("div",{class:"face back"},msgIn,el("div",{class:"sig"},sigName,left))));
+  const setColor=c=>card.style.setProperty("--n-bg",c); setColor(noteColor(st.note));
+
+  // step 1 controls
+  const picks=SPRITES.map(s=>{ const b=el("button",{type:"button",class:"pick","aria-pressed":"false",onclick:()=>{
+      st.sprite=s.id; frontArt.replaceWith(frontArt=el("img",{class:"wc-art",src:spriteURL(s.id,8),alt:s.ko}));
+      picks.forEach(p=>p.setAttribute("aria-pressed",String(p.dataset.id===s.id))); nextBtn.disabled=false; }},
       el("img",{src:spriteURL(s.id),alt:""}),el("span",{text:s.ko})); b.dataset.id=s.id; return b; });
   const sw=NOTES.map(n=>{ const b=el("button",{type:"button",class:"swatch","aria-label":n.ko+" 카드","aria-pressed":String(n.id===st.note),style:`background:${n.c}`,
-      onclick:()=>{ st.note=n.id; pv.style.setProperty("--n-bg",n.c); sw.forEach(x=>x.setAttribute("aria-pressed",String(x.dataset.id===n.id))); }}); b.dataset.id=n.id; return b; });
+      onclick:()=>{ st.note=n.id; setColor(n.c); sw.forEach(x=>x.setAttribute("aria-pressed",String(x.dataset.id===n.id))); }}); b.dataset.id=n.id; return b; });
   const nameIn=el("input",{id:"cname",maxlength:"20",placeholder:"예: 3반 이서준",value:lsGet("lastName")||"",autocomplete:"off"});
-  nameIn.addEventListener("input",()=>pvName.textContent=nameIn.value.trim()||"이름");
-  const msgIn=el("textarea",{id:"cmsg",maxlength:"300",placeholder:`${V.cake.to}에게 하고 싶은 말을 적어 주세요`});
-  const left=el("span",{class:"hint",text:"0 / 300"}); msgIn.addEventListener("input",()=>left.textContent=`${msgIn.value.length} / 300`);
-  const save=el("button",{class:"btn primary",type:"submit"},"토핑 올리기");
-  const form=el("form",{class:"panel sheet",onsubmit:async e=>{ e.preventDefault();
+  nameIn.addEventListener("input",()=>{ const v=nameIn.value.trim()||"이름"; frontName.textContent=v; sigName.textContent="– "+v; });
+  const nextBtn=el("button",{class:"btn primary",type:"button",disabled:true,onclick:()=>go(2)},"뒷면에 편지 쓰기 →");
+  const step1=el("div",{class:"wc-step"},
+    el("div",{class:"field"},el("label",{text:"① 마음에 드는 토핑을 골라요"}),el("div",{class:"picks"},picks)),
+    el("div",{class:"wc-row"},
+      el("div",{class:"field",style:"flex:1;min-width:150px"},el("label",{for:"cname",text:"보내는 사람"}),nameIn),
+      el("div",{class:"field"},el("label",{text:"카드 색"}),el("div",{class:"swatches"},sw))),
+    el("div",{class:"wc-actions"},nextBtn));
+
+  // step 2 controls
+  msgIn.addEventListener("input",()=>left.textContent=`${msgIn.value.length} / 300`);
+  const save=el("button",{class:"btn primary",type:"submit"},"케이크에 올리기 🎂");
+  const step2=el("div",{class:"wc-step",hidden:true},
+    el("p",{class:"hint",style:"margin:0;text-align:center",text:"② 카드 뒷면에 바로 편지를 써요. 케이크에 올라가면 카드를 뒤집어야 읽을 수 있어요."}),
+    el("div",{class:"wc-actions"},el("button",{class:"btn ghost",type:"button",onclick:()=>go(1)},"← 토핑 바꾸기"),save));
+
+  const stepper=el("div",{class:"wc-stepper"},el("span",{class:"on",text:"① 토핑 고르기"}),el("span",{text:"② 편지 쓰기"}));
+  function go(n){ st.step=n; const on=n===2; setFlip(card,on); step1.hidden=on; step2.hidden=!on;
+    stepper.children[0].classList.toggle("on",!on); stepper.children[1].classList.toggle("on",on);
+    msgIn.tabIndex=on?0:-1; if(on) setTimeout(()=>msgIn.focus({preventScroll:true}),450); }
+
+  const form=el("form",{class:"panel sheet wc-sheet",onsubmit:async e=>{ e.preventDefault();
+      if(st.step!==2) return go(2);
       const name=nameIn.value.trim(), text=msgIn.value.trim();
-      if(!text){ msgIn.focus(); toast("메시지를 적어 주세요"); return; }
+      if(!st.sprite){ go(1); toast("토핑을 먼저 골라 주세요"); return; }
+      if(!text){ msgIn.focus(); toast("편지를 적어 주세요"); return; }
       save.disabled=true; save.textContent="올리는 중…";
       const p=findFreeSpot();
-      try{ await api("addTopping",{cake:V.code,sprite:st.sprite,note:st.note,x:p.x,y:p.y,name:name||"익명",text});
-        lsSet("lastName",name); lsSet("lastSprite",st.sprite); closeCompose(); V.sig=""; await loadTops(); toast("토핑을 올렸어요!"); }
-      catch(err){ save.disabled=false; save.textContent="토핑 올리기"; toast(errMsg(err,"올리지 못했어요. 다시 시도해 주세요")); } }},
-    el("div",{class:"row",style:"justify-content:space-between"},el("h2",{text:"메시지 토핑 만들기"}),
-      el("button",{class:"btn small ghost",type:"button",onclick:closeCompose},"닫기")),
-    el("div",{class:"compose-top"},pv,el("div",{class:"field",style:"flex:1;min-width:0"},el("label",{text:"토핑 고르기"}),el("div",{class:"picks"},picks))),
-    el("div",{class:"field"},el("label",{for:"cmsg",text:"메시지 (카드 뒷면)"}),msgIn,left),
-    el("div",{class:"field"},el("label",{for:"cname",text:"보내는 사람 (카드 앞면)"}),nameIn),
-    el("div",{class:"field"},el("label",{text:"카드 색"}),el("div",{class:"swatches"},sw)),
-    el("div",{class:"row"},save,el("span",{class:"hint",text:"케이크 맨 아래 층에 걸려요."})));
+      try{ const id=await api("addTopping",{cake:V.code,sprite:st.sprite,note:st.note,x:p.x,y:p.y,name:name||"익명",text});
+        lsSet("lastName",name); lsSet("wrote-"+V.code,"1"); closeCompose(); V.sig=""; V.justAdded=id; await loadTops();
+        const c=V.board.querySelector(`.orn[data-id="${id}"]`); if(c){ c.scrollIntoView({behavior:"smooth",block:"center"}); c.classList.add("pop"); }
+        toast("케이크에 올라갔어요! 🎉"); }
+      catch(err){ save.disabled=false; save.textContent="케이크에 올리기 🎂"; toast(errMsg(err,"올리지 못했어요. 다시 시도해 주세요")); } }},
+    el("div",{class:"row",style:"justify-content:space-between;align-items:flex-start"},
+      el("div",{style:"min-width:0;flex:1"},el("div",{class:"pixel-label",text:"Rolling paper cake"}),el("h2",{text:`${to}에게 마음 토핑 올리기`})),
+      el("button",{class:"btn small ghost",type:"button","aria-label":"닫기",style:"flex:none",onclick:closeCompose},"✕")),
+    stepper, el("div",{class:"wc-stage"},card), step1, step2);
   composeEl=el("div",{class:"overlay",onclick:e=>{ if(e.target===composeEl) closeCompose(); }},form);
   document.addEventListener("keydown",escClose);
-  document.body.append(composeEl); setTimeout(()=>msgIn.focus(),50);
+  document.body.append(composeEl);
 }
-function escClose(e){ if(e.key==="Escape"){ closeCompose(); document.removeEventListener("keydown",escClose); } }
+function escClose(e){ if(e.key==="Escape") closeCompose(); }
 
 /* ===================== export (B4 print / PDF / PNG) ===================== */
 const B4 = {wMM:257, hMM:364, PW:1520, PH:2153};
