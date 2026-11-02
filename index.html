@@ -121,8 +121,10 @@ button,input,textarea{font:inherit;color:inherit}
 .orn-inner{position:relative;width:100%;height:100%;transition:transform .55s cubic-bezier(.34,1.35,.5,1);transform-style:preserve-3d}
 .orn.flipped .orn-inner{transform:rotateY(180deg)}
 .face{position:absolute;inset:0;-webkit-backface-visibility:hidden;backface-visibility:hidden;background:var(--n-bg);color:var(--note-ink);border:2px solid #4a3640;border-radius:10px;box-shadow:3px 3px 0 rgba(74,54,64,.3);display:flex;flex-direction:column}
-.front{align-items:center;justify-content:center;gap:1px;padding:12px 6px 8px}
-.front img{height:44%;width:auto;max-width:80%;image-rendering:pixelated}
+.front{align-items:center;justify-content:center;padding:8px;background:transparent!important;border:0!important;box-shadow:none!important}
+.front::after{content:"";position:absolute;left:24%;right:24%;bottom:16%;height:9%;border-radius:50%;background:rgba(74,54,64,.16);z-index:-1}
+.orn:not(.flipped):not(.add):not(.wc):hover .front img{transform:translateY(-4px)}
+.front img{height:62%;width:auto;max-width:92%;image-rendering:pixelated;transition:transform .2s;position:relative}
 .front .from{font-family:var(--f-pixel);font-size:9px;letter-spacing:.12em;opacity:.55;margin-top:6px}
 .front b{font-family:var(--f-display);font-weight:800;font-size:14px;line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hook{position:absolute;top:-8px;left:50%;width:13px;height:13px;border:2px solid #4a3640;border-radius:50%;background:#fff;transform:translateX(-50%)}
@@ -142,8 +144,8 @@ button,input,textarea{font:inherit;color:inherit}
 .orn.wc{--cw:min(210px,62vw);--ch:min(270px,80vw);cursor:default}
 .orn.wc:hover{transform:none}
 .wc .front{gap:4px;padding:18px 10px 14px}
-.wc-art{height:52%!important;max-width:85%}
-.wc-empty{height:52%;width:78%;border:2px dashed rgba(74,54,64,.45);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:12px;color:#7a6470;text-align:center;padding:6px}
+.wc-art{height:60%!important;max-width:90%}
+.wc-empty{height:60%;width:80%;background:rgba(255,255,255,.6);border:2px dashed rgba(74,54,64,.45);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:12px;color:#7a6470;text-align:center;padding:6px}
 .wc-empty .plus{font-size:30px;line-height:1;font-family:var(--f-title)}
 .wc .front .from{font-size:11px}
 .wc-name{font-size:18px!important}
@@ -555,7 +557,7 @@ function demoCard(t){
   const card=el("div",{class:"orn",role:"button",tabindex:"0","aria-pressed":"false","aria-label":`예시 카드: ${t.name}`,style:`--n-bg:${noteColor(t.note)};--rot:${(t.id.charCodeAt(1)%5-2)*0.8}deg`,
       onclick:()=>setFlip(card,!card.classList.contains("flipped")), onkeydown:e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); card.click(); } }},
     el("div",{class:"orn-inner"},
-      el("div",{class:"face front"},el("span",{class:"hook"}),el("img",{src:spriteURL(t.sprite,5),alt:SPR[t.sprite].ko}),el("span",{class:"from",text:"From."}),el("b",{text:t.name})),
+      el("div",{class:"face front"},el("img",{src:spriteURL(t.sprite,6),alt:SPR[t.sprite].ko})),
       el("div",{class:"face back"},el("div",{class:"msg",style:"font-size:12px",text:t.text}),el("div",{class:"sig"},el("span",{text:"– "+t.name})))));
   if(t.id==="d3") setFlip(card,true);
   return card;
@@ -575,17 +577,16 @@ function syncAllBtn(){ if(!V.allBtn) return; V.allBtn.hidden=!V.tops.length;
   V.allBtn.textContent=V.tops.length&&V.flipped.size>=V.tops.length?"모두 앞면으로":"모두 뒤집어 읽기"; }
 function setFlip(card,on){ card.classList.toggle("flipped",on); card.setAttribute("aria-pressed",String(on)); }
 function ornament(t){
-  const len=(t.text||"").length, fs=len<40?15:len<90?13:12;
+  const len=(t.text||"").length, fs=len<40?15:len<90?13:len<200?12:11;
   const name=t.name||"익명";
   const del=(t.mine||(V.cake&&V.cake.mine))?el("button",{class:"orn-del",type:"button","aria-label":"메시지 지우기",onclick:e=>{ e.stopPropagation();
       if(del.dataset.armed){ api("deleteTopping",{id:t.id}).then(()=>{ V.sig=""; V.flipped.delete(t.id); toast("메시지를 지웠어요"); loadTops(); }).catch(err=>toast(errMsg(err,"지우지 못했어요"))); }
       else { del.dataset.armed="1"; del.textContent="지울까요?"; setTimeout(()=>{ delete del.dataset.armed; del.textContent="✕"; },3000); } }},"✕"):null;
-  const card=el("div",{class:"orn",role:"button",tabindex:"0","aria-pressed":"false","aria-label":`${name}의 메시지 카드`,style:`--n-bg:${noteColor(t.note)};--rot:${((t.id||"").charCodeAt(0)%5-2)*0.8}deg`,
+  const card=el("div",{class:"orn",role:"button",tabindex:"0","aria-pressed":"false","aria-label":`${SPR[t.sprite].ko} 토핑 카드 (누르면 편지가 보여요)`,style:`--n-bg:${noteColor(t.note)};--rot:${((t.id||"").charCodeAt(0)%5-2)*0.8}deg`,
       onclick:()=>{ const on=!card.classList.contains("flipped"); on?V.flipped.add(t.id):V.flipped.delete(t.id); setFlip(card,on); syncAllBtn(); },
       onkeydown:e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); card.click(); } }},
     el("div",{class:"orn-inner"},
-      el("div",{class:"face front"},el("span",{class:"hook"}),el("img",{src:spriteURL(t.sprite,5),alt:SPR[t.sprite].ko}),
-        el("span",{class:"from",text:"From."}),el("b",{text:name})),
+      el("div",{class:"face front"},el("img",{src:spriteURL(t.sprite,6),alt:SPR[t.sprite].ko})),
       el("div",{class:"face back"},el("div",{class:"msg",style:`font-size:${fs}px`,text:t.text||""}),
         el("div",{class:"sig"},el("span",{text:"– "+name}),del))));
   card.dataset.id=t.id; if(V.flipped.has(t.id)) setFlip(card,true);
@@ -619,12 +620,11 @@ function openCompose(){
 
   // big flip card
   let frontArt=el("div",{class:"wc-empty"},el("span",{class:"plus",text:"?"}),el("span",{text:"아래에서 토핑을 골라 주세요"}));
-  const frontName=el("b",{class:"wc-name",text:lsGet("lastName")||"이름"});
   const sigName=el("span",{text:"– "+(lsGet("lastName")||"이름")});
-  const msgIn=el("textarea",{id:"cmsg",class:"wc-text",maxlength:"300",placeholder:`${to}에게 하고 싶은 말을 적어 주세요`,tabindex:"-1"});
-  const left=el("span",{class:"wc-count",text:"0 / 300"});
+  const msgIn=el("textarea",{id:"cmsg",class:"wc-text",maxlength:"500",placeholder:`${to}에게 하고 싶은 말을 적어 주세요`,tabindex:"-1"});
+  const left=el("span",{class:"wc-count",text:"0 / 500"});
   const card=el("div",{class:"orn wc"},el("div",{class:"orn-inner"},
-    el("div",{class:"face front"},el("span",{class:"hook"}),frontArt,el("span",{class:"from",text:"From."}),frontName),
+    el("div",{class:"face front"},frontArt),
     el("div",{class:"face back"},msgIn,el("div",{class:"sig"},sigName,left))));
   const setColor=c=>card.style.setProperty("--n-bg",c); setColor(noteColor(st.note));
 
@@ -636,20 +636,20 @@ function openCompose(){
   const sw=NOTES.map(n=>{ const b=el("button",{type:"button",class:"swatch","aria-label":n.ko+" 카드","aria-pressed":String(n.id===st.note),style:`background:${n.c}`,
       onclick:()=>{ st.note=n.id; setColor(n.c); sw.forEach(x=>x.setAttribute("aria-pressed",String(x.dataset.id===n.id))); }}); b.dataset.id=n.id; return b; });
   const nameIn=el("input",{id:"cname",maxlength:"20",placeholder:"예: 3반 이서준",value:lsGet("lastName")||"",autocomplete:"off"});
-  nameIn.addEventListener("input",()=>{ const v=nameIn.value.trim()||"이름"; frontName.textContent=v; sigName.textContent="– "+v; });
+  nameIn.addEventListener("input",()=>{ sigName.textContent="– "+(nameIn.value.trim()||"이름"); });
   const nextBtn=el("button",{class:"btn primary",type:"button",disabled:true,onclick:()=>go(2)},"뒷면에 편지 쓰기 →");
   const step1=el("div",{class:"wc-step"},
     el("div",{class:"field"},el("label",{text:"① 마음에 드는 토핑을 골라요"}),el("div",{class:"picks"},picks)),
-    el("div",{class:"wc-row"},
-      el("div",{class:"field",style:"flex:1;min-width:150px"},el("label",{for:"cname",text:"보내는 사람"}),nameIn),
-      el("div",{class:"field"},el("label",{text:"카드 색"}),el("div",{class:"swatches"},sw))),
     el("div",{class:"wc-actions"},nextBtn));
 
   // step 2 controls
-  msgIn.addEventListener("input",()=>left.textContent=`${msgIn.value.length} / 300`);
+  msgIn.addEventListener("input",()=>left.textContent=`${msgIn.value.length} / 500`);
   const save=el("button",{class:"btn primary",type:"submit"},"케이크에 올리기 🎂");
   const step2=el("div",{class:"wc-step",hidden:true},
-    el("p",{class:"hint",style:"margin:0;text-align:center",text:"② 카드 뒷면에 바로 편지를 써요. 케이크에 올라가면 카드를 뒤집어야 읽을 수 있어요."}),
+    el("p",{class:"hint",style:"margin:0;text-align:center",text:"② 토핑 뒷면에 편지를 써요. 케이크에서는 토핑을 눌러야 편지가 보여요."}),
+    el("div",{class:"wc-row"},
+      el("div",{class:"field",style:"flex:1;min-width:150px"},el("label",{for:"cname",text:"보내는 사람"}),nameIn),
+      el("div",{class:"field"},el("label",{text:"편지지 색"}),el("div",{class:"swatches"},sw))),
     el("div",{class:"wc-actions"},el("button",{class:"btn ghost",type:"button",onclick:()=>go(1)},"← 토핑 바꾸기"),save));
 
   const stepper=el("div",{class:"wc-stepper"},el("span",{class:"on",text:"① 토핑 고르기"}),el("span",{text:"② 편지 쓰기"}));

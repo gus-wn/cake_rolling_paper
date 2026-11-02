@@ -79,7 +79,7 @@ const ACTIONS = {
 
   addTopping(req) {
     const cake = str(req.cake, 12), key = str(req.key, 64);
-    const text = str(req.text, 300), name = str(req.name, 20) || '익명';
+    const text = str(req.text, 500), name = str(req.name, 20) || '익명';
     const sprite = SPRITES.indexOf(req.sprite) >= 0 ? req.sprite : 'strawberry';
     const note = NOTES.indexOf(req.note) >= 0 ? req.note : 'cream';
     const x = clampInt(req.x, 0, 159), y = clampInt(req.y, 0, 119);
