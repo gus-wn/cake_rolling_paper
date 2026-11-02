@@ -77,13 +77,12 @@ button,input,textarea{font:inherit;color:inherit}
 .banner{border:2px dashed var(--line);border-radius:10px;padding:10px 14px;font-size:14px;color:var(--muted);background:var(--panel)}
 
 /* ---------- home ---------- */
-.hero{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:center}
-.hero-text{display:flex;flex-direction:column;gap:10px;min-width:0}
+.hero{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
+.hero-text{display:flex;flex-direction:column;align-items:center;gap:10px;min-width:0;max-width:34em}
 .hero h1{font-size:clamp(30px,6vw,44px)}
 .hero h1 em{font-style:normal;color:var(--accent)}
 .hero p{margin:0;color:var(--muted)}
-.hero canvas{width:100%;image-rendering:pixelated;aspect-ratio:4/3;max-width:100%}
-@media (max-width:620px){.hero{grid-template-columns:1fr}.hero canvas{max-width:340px;justify-self:center}}
+.hero-board{max-width:560px}
 .create{display:flex;flex-direction:column;gap:14px}
 .flavors{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 @media (max-width:480px){.flavors{grid-template-columns:repeat(2,1fr)}}
@@ -337,16 +336,15 @@ window.addEventListener("hashchange",route);
 /* ===================== home ===================== */
 function renderHome(){
   const app=$("#app"); app.replaceChildren();
-  const heroCanvas=el("canvas",{"aria-label":"딸기와 초가 올라간 도트 케이크 그림",role:"img"});
-  paintCake(heroCanvas,"strawberry",[
-    {sprite:"candle",x:62,y:44},{sprite:"strawberry",x:80,y:50},{sprite:"candle",x:98,y:44},
-    {sprite:"heart",x:48,y:56},{sprite:"star",x:112,y:55},{sprite:"macaron",x:70,y:60},{sprite:"cherry",x:92,y:61}]);
+  const heroBoard=el("div",{class:"board hero-board",role:"group","aria-label":"메시지 카드가 걸린 예시 케이크"});
   app.append(el("section",{class:"hero"},
     el("div",{class:"hero-text"},
       el("div",{class:"pixel-label",text:"Rolling paper cake"}),
       el("h1",{},"마음을 ",el("em",{text:"토핑"}),"처럼 올려요"),
-      el("p",{text:"케이크를 하나 굽고 링크를 보내면, 친구들이 메시지를 하나씩 토핑으로 올려 줘요. 다 모이면 B4 크기로 바로 출력할 수 있어요."})),
-    heroCanvas));
+      el("p",{text:"케이크를 하나 굽고 링크를 보내면, 친구들이 메시지 카드를 하나씩 걸어 줘요. 카드를 뒤집으면 메시지가 보이고, 다 모이면 B4 크기로 바로 출력할 수 있어요."})),
+    heroBoard,
+    el("div",{class:"hint",text:"↑ 예시 카드예요. 눌러서 뒤집어 보세요."})));
+  HERO.board=heroBoard; layoutHero();
   if(!API_URL) app.append(el("div",{class:"banner",text:ERR.no_api+" 방법은 README에 있어요."}));
 
   let flavor="strawberry";
@@ -483,29 +481,52 @@ function topperURL(){ if(urlCache.topper) return urlCache.topper;
   urlCache.topperW=w; return (urlCache.topper=c.toDataURL()); }
 
 /* ---- board layout ---- */
-let resizeT; window.addEventListener("resize",()=>{ clearTimeout(resizeT); resizeT=setTimeout(()=>{ if(V.board&&document.body.contains(V.board)) layoutBoard(); },150); });
+let resizeT; window.addEventListener("resize",()=>{ clearTimeout(resizeT); resizeT=setTimeout(()=>{ if(V.board&&document.body.contains(V.board)) layoutBoard(); layoutHero(); },150); });
+function buildTiers(items,avail,CW,CH,flavor,render,startCap){
+  const GAP=10, PAD=18, snap=v=>Math.floor(v/DOT)*DOT;
+  const maxPer=Math.max(1,Math.floor((avail-2*PAD+GAP)/(CW+GAP)));
+  const tiers=[]; let i=0, k=0, start=startCap||(maxPer>=5?2:1);
+  while(i<items.length){ const cap=Math.min(maxPer,start+k); tiers.push(items.slice(i,i+cap)); i+=cap; k++; }
+  let prevW=0;
+  const widths=tiers.map(t=>{ let w=t.length*CW+(t.length-1)*GAP+2*PAD; w=Math.max(w,CW*1.6+2*PAD,prevW+32); w=snap(Math.min(w,avail)); prevW=w; return w; });
+  const out=[el("img",{class:"topper",src:topperURL(),alt:"",style:`width:${urlCache.topperW*DOT}px`})];
+  tiers.forEach((t,ti)=>{ const w=widths[ti], h=snap(CH+48);
+    const tier=el("div",{class:"tier",style:`width:${w}px;height:${h}px;background-image:url(${tierURL(w/DOT,h/DOT,flavor,ti*7)})`});
+    t.forEach(item=>tier.append(render(item))); out.push(tier); });
+  const pw=snap(Math.min(avail,(widths[widths.length-1]||0)+48));
+  out.push(el("div",{class:"plate",style:`width:${pw}px;height:${5*DOT}px;background-image:url(${plateURL(pw/DOT)})`}));
+  return out;
+}
+const HERO={};
+const DEMO=[
+  {id:"d1",sprite:"strawberry",note:"cream",name:"짝꿍",text:"생일 축하해! 올해도 같이 웃자 🎂"},
+  {id:"d2",sprite:"candle",note:"berry",name:"선생님",text:"늘 성실한 모습 멋져요. 축하해요!"},
+  {id:"d3",sprite:"heart",note:"sky",name:"친구",text:"항상 고마워 ♡"},
+  {id:"d4",sprite:"star",note:"lav",name:"동아리",text:"우리 동아리 최고!"},
+  {id:"d5",sprite:"macaron",note:"mint",name:"옆 반",text:"축하축하 🎉"},
+  {id:"d6",sprite:"cookie",note:"berry",name:"후배",text:"선배 늘 응원해요!"}];
+function layoutHero(){
+  const b=HERO.board; if(!b||!document.body.contains(b)) return;
+  const avail=Math.max(240,b.clientWidth||520), CW=avail<420?80:96, CH=Math.round(CW*1.28);
+  b.style.setProperty("--cw",CW+"px"); b.style.setProperty("--ch",CH+"px");
+  b.replaceChildren(...buildTiers(DEMO,avail,CW,CH,"strawberry",demoCard,1));
+}
+function demoCard(t){
+  const card=el("div",{class:"orn",role:"button",tabindex:"0","aria-pressed":"false","aria-label":`예시 카드: ${t.name}`,style:`--n-bg:${noteColor(t.note)};--rot:${(t.id.charCodeAt(1)%5-2)*0.8}deg`,
+      onclick:()=>setFlip(card,!card.classList.contains("flipped")), onkeydown:e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); card.click(); } }},
+    el("div",{class:"orn-inner"},
+      el("div",{class:"face front"},el("span",{class:"hook"}),el("img",{src:spriteURL(t.sprite,5),alt:SPR[t.sprite].ko}),el("span",{class:"from",text:"From."}),el("b",{text:t.name})),
+      el("div",{class:"face back"},el("div",{class:"msg",style:"font-size:12px",text:t.text}),el("div",{class:"sig"},el("span",{text:"– "+t.name})))));
+  if(t.id==="d3") setFlip(card,true);
+  return card;
+}
 function layoutBoard(){
   const b=V.board; if(!b) return;
   const flavor=V.cake?V.cake.flavor:"strawberry";
   const avail=Math.max(260,b.clientWidth||700);
-  const CW=avail<480?96:118, CH=Math.round(CW*1.28), GAP=10, PAD=18;
+  const CW=avail<480?96:118, CH=Math.round(CW*1.28);
   b.style.setProperty("--cw",CW+"px"); b.style.setProperty("--ch",CH+"px");
-  const items=[...V.tops,{id:"__add"}];
-  const maxPer=Math.max(1,Math.floor((avail-2*PAD+GAP)/(CW+GAP)));
-  const tiers=[]; let i=0, k=0, start=maxPer>=5?2:1;
-  while(i<items.length){ const cap=Math.min(maxPer,start+k); tiers.push(items.slice(i,i+cap)); i+=cap; k++; }
-  const snap=v=>Math.floor(v/DOT)*DOT;
-  let prevW=0;
-  const widths=tiers.map(t=>{ let w=t.length*CW+(t.length-1)*GAP+2*PAD; w=Math.max(w,CW*1.6+2*PAD,prevW+32); w=snap(Math.min(w,avail)); prevW=w; return w; });
-  const topper=el("img",{class:"topper",src:topperURL(),alt:"",style:`width:${urlCache.topperW*DOT}px`});
-  const frag=[topper];
-  tiers.forEach((t,ti)=>{
-    const w=widths[ti], h=snap(CH+48), wd=w/DOT, hd=h/DOT;
-    const tier=el("div",{class:"tier",style:`width:${w}px;height:${h}px;background-image:url(${tierURL(wd,hd,flavor,ti*7)})`});
-    t.forEach(item=>tier.append(item.id==="__add"?addCard():ornament(item)));
-    frag.push(tier);
-  });
-  frag.push(el("div",{class:"plate",style:`width:${Math.min(avail,widths[widths.length-1]+48)}px;height:${5*DOT}px;background-image:url(${plateURL(Math.min(avail,widths[widths.length-1]+48)/DOT|0)})`}));
+  const frag=buildTiers([...V.tops,{id:"__add"}],avail,CW,CH,flavor,item=>item.id==="__add"?addCard():ornament(item));
   b.replaceChildren(...frag);
   V.count.textContent=V.tops.length?`토핑 ${V.tops.length}개`:"아직 토핑이 없어요";
   syncAllBtn();
