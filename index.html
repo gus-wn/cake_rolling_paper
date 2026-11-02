@@ -83,6 +83,10 @@ button,input,textarea{font:inherit;color:inherit}
 .hero h1 em{font-style:normal;color:var(--accent)}
 .hero p{margin:0;color:var(--muted)}
 .hero-board{max-width:560px}
+.how{list-style:none;margin:0;padding:0;display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.how li{display:flex;align-items:center;gap:6px;background:var(--panel);border:1.5px solid var(--line);border-radius:999px;padding:5px 12px 5px 6px;font-weight:700;font-size:13px}
+.how b{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-size:12px}
+.share.owner{border-color:var(--accent);box-shadow:4px 4px 0 var(--soft)}
 .create{display:flex;flex-direction:column;gap:14px}
 .flavors{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 @media (max-width:480px){.flavors{grid-template-columns:repeat(2,1fr)}}
@@ -361,36 +365,40 @@ function renderHome(){
   app.append(el("section",{class:"hero"},
     el("div",{class:"hero-text"},
       el("div",{class:"pixel-label",text:"Rolling paper cake"}),
-      el("h1",{},"마음을 ",el("em",{text:"토핑"}),"처럼 올려요"),
-      el("p",{text:"케이크를 하나 굽고 링크를 보내면, 친구들이 메시지 카드를 하나씩 걸어 줘요. 카드를 뒤집으면 메시지가 보이고, 다 모이면 B4 크기로 바로 출력할 수 있어요."})),
-    heroBoard,
-    el("div",{class:"hint",text:"↑ 예시 카드예요. 눌러서 뒤집어 보세요."})));
-  HERO.board=heroBoard; layoutHero();
+      el("h1",{},"내 ",el("em",{text:"롤링페이퍼"})," 케이크 만들기"),
+      el("p",{text:"내 케이크를 만들고 링크를 보내면, 친구들이 링크를 누르자마자 토핑을 골라 편지를 써 줘요."})),
+    el("ol",{class:"how"},
+      el("li",{},el("b",{text:"1"}),el("span",{text:"내 케이크 만들기"})),
+      el("li",{},el("b",{text:"2"}),el("span",{text:"링크 보내기"})),
+      el("li",{},el("b",{text:"3"}),el("span",{text:"친구가 바로 써요"})))));
   if(!API_URL) app.append(el("div",{class:"banner",text:ERR.no_api+" 방법은 README에 있어요."}));
 
   let flavor="strawberry";
-  const toIn=el("input",{id:"to",maxlength:"20",placeholder:"예: 김민지",autocomplete:"off"});
+  const toIn=el("input",{id:"to",maxlength:"20",placeholder:"예: 김민지",autocomplete:"off",value:lsGet("ownerName")||""});
   const titleIn=el("input",{id:"title",maxlength:"30",placeholder:"예: 생일 축하해!",autocomplete:"off"});
   const fbtns=Object.entries(FLAVORS).map(([id,f])=>{ const b=el("button",{type:"button",class:"flavor","aria-pressed":String(id===flavor),
       onclick:()=>{ flavor=id; fbtns.forEach(x=>x.setAttribute("aria-pressed",String(x.dataset.id===id))); }},
       el("img",{src:cakeURL(id),alt:""}), el("span",{text:f.ko})); b.dataset.id=id; return b; });
-  const createBtn=el("button",{class:"btn primary",type:"submit"},"케이크 굽기");
+  const createBtn=el("button",{class:"btn primary",type:"submit"},"내 케이크 굽기");
   app.append(el("form",{class:"panel create",onsubmit:async e=>{
       e.preventDefault();
       const to=toIn.value.trim(), title=titleIn.value.trim();
-      if(!to){ toIn.focus(); toast("받는 사람 이름을 적어 주세요"); return; }
+      if(!to){ toIn.focus(); toast("이름을 적어 주세요"); return; }
       createBtn.disabled=true; createBtn.textContent="굽는 중…";
       try{ const code=await api("createCake",{to,title,flavor});
-        rememberCake({code,to,title,flavor,mine:true}); lsSet("justMade",code); location.hash="cake-"+code; }
-      catch(err){ createBtn.disabled=false; createBtn.textContent="케이크 굽기"; toast(errMsg(err,"케이크를 만들지 못했어요. 다시 시도해 주세요")); }
+        rememberCake({code,to,title,flavor,mine:true}); lsSet("justMade",code); lsSet("ownerName",to); location.hash="cake-"+code; }
+      catch(err){ createBtn.disabled=false; createBtn.textContent="내 케이크 굽기"; toast(errMsg(err,"케이크를 만들지 못했어요. 다시 시도해 주세요")); }
     }},
-    el("h2",{text:"새 케이크 굽기"}),
-    el("div",{class:"field"},el("label",{for:"to",text:"누구에게 주는 롤링페이퍼인가요?"}),toIn),
+    el("h2",{text:"내 롤링페이퍼 만들기"}),
+    el("div",{class:"field"},el("label",{for:"to",text:"롤링페이퍼 주인 이름"}),toIn,el("span",{class:"hint",text:"보통은 내 이름을 적어요. 친구 대신 만들어 줄 때는 친구 이름을 적어도 돼요."})),
     el("div",{class:"field"},el("label",{for:"title",text:"케이크에 쓸 한마디"}),titleIn,
       el("div",{class:"chips"},["생일 축하해!","졸업 축하해!","그동안 고마웠어요","항상 응원해!","전학 가도 잊지 마"].map(t=>
         el("button",{type:"button",class:"chip",text:t,onclick:()=>{titleIn.value=t;}})))),
     el("div",{class:"field"},el("label",{text:"케이크 맛"}),el("div",{class:"flavors"},fbtns)),
-    el("div",{class:"row"},createBtn,el("span",{class:"hint",text:"만든 뒤에 공유 링크가 나와요."}))));
+    el("div",{class:"row"},createBtn,el("span",{class:"hint",text:"만들면 바로 친구에게 보낼 링크가 나와요."}))));
+  app.append(el("section",{class:"hero"},el("h2",{text:"이런 케이크가 만들어져요"}),heroBoard,
+    el("div",{class:"hint",text:"↑ 예시 카드예요. 눌러서 뒤집어 보세요."})));
+  HERO.board=heroBoard; layoutHero();
 
   const findIn=el("input",{id:"find",maxlength:"12",placeholder:"케이크 코드",autocomplete:"off","aria-label":"케이크 코드"});
   const go=()=>{ const v=findIn.value.trim().toLowerCase().replace(/^#?cake-/,""); if(v) location.hash="cake-"+v; };
@@ -398,9 +406,9 @@ function renderHome(){
   let recent=[]; try{ recent=JSON.parse(lsGet("rpRecent")||"[]"); }catch(e){}
   const tiles=el("div",{class:"tiles"},recent.map(c=>el("button",{class:"tile",type:"button",onclick:()=>location.hash="cake-"+c.code},
     el("img",{src:cakeURL(c.flavor in FLAVORS?c.flavor:"strawberry"),alt:""}),
-    el("b",{text:`${c.to}에게`}), el("span",{text:`${c.title||"롤링페이퍼"}${c.mine?" · 내가 만든 케이크":""}`}))));
+    el("b",{text:`${c.to}의 롤링페이퍼`}), el("span",{text:`${c.title||"롤링페이퍼"}${c.mine?" · 내가 만든 케이크":""}`}))));
   app.append(el("section",{class:"wrap",style:"gap:12px"},
-    el("div",{class:"list-head"},el("h2",{text:"최근에 연 케이크"}),
+    el("div",{class:"list-head"},el("h2",{text:"최근에 연 롤링페이퍼"}),
       el("div",{class:"findrow"},findIn,el("button",{class:"btn small",type:"button",onclick:go},"찾기"))),
     recent.length?tiles:el("div",{class:"empty",text:"이 기기에서 연 케이크가 여기에 모여요. 받은 코드가 있으면 위에서 찾아보세요."})));
 }
@@ -421,12 +429,17 @@ function renderCake(code){
   const pdfBtn=el("button",{class:"btn",type:"button",onclick:()=>exportFile("pdf")},"B4 PDF 저장");
   const pngBtn=el("button",{class:"btn",type:"button",onclick:()=>exportFile("png")},"이미지 저장");
   const linkIn=el("input",{id:"sharelink",readonly:true,value:shareLink(code),"aria-label":"공유 링크",onfocus:e=>e.target.select()});
+  const inviteText=()=>`🎂 ${(V.cake||{}).to||""}의 롤링페이퍼 케이크예요! 링크를 누르면 바로 토핑을 골라 편지를 쓸 수 있어요.`;
+  const shareTitle=el("h3",{text:"친구들에게 링크 보내기"});
+  const shareLead=el("div",{class:"hint",text:"링크를 받은 사람은 로그인 없이 바로 편지를 쓸 수 있어요."});
   const share=el("section",{class:"panel share"},
-    el("div",{class:"row",style:"justify-content:space-between"},el("h3",{text:"친구들에게 링크 보내기"}),el("span",{},"코드 ",el("span",{class:"code",text:code.toUpperCase()}))),
+    el("div",{class:"row",style:"justify-content:space-between"},shareTitle,el("span",{},"코드 ",el("span",{class:"code",text:code.toUpperCase()}))),
+    shareLead,
     el("div",{class:"linkbox"},linkIn,el("button",{class:"btn small",type:"button",onclick:()=>copyText(linkIn.value,linkIn)},"링크 복사")),
-    el("button",{class:"linkish",type:"button",style:"align-self:flex-start",onclick:()=>{
-      const c=V.cake||{}; copyText(`🎂 ${c.to||""}에게 주는 롤링페이퍼 케이크에 메시지 토핑을 올려 주세요!\n${shareLink(code)}`); }},"초대 문구까지 복사하기"),
-    el("div",{class:"hint",text:"링크를 받은 사람은 로그인 없이 바로 메시지를 올릴 수 있어요."}));
+    el("div",{class:"row"},
+      navigator.share?el("button",{class:"btn small primary",type:"button",onclick:()=>{ navigator.share({title:"토핑케이크 롤링페이퍼",text:inviteText(),url:shareLink(code)}).catch(()=>{}); }},"📤 카톡·문자로 보내기"):null,
+      el("button",{class:"linkish",type:"button",onclick:()=>copyText(inviteText()+"\n"+shareLink(code))},"초대 문구까지 복사하기")));
+  V.share=Object.assign(share,{_title:shareTitle,_lead:shareLead});
   const delZone=el("div",{class:"danger-zone",hidden:true});
   Object.assign(V,{head,board,count,allBtn,addBtn,exportBtns:[printBtn,pdfBtn,pngBtn],delZone});
 
@@ -439,13 +452,18 @@ function renderCake(code){
     el("div",{class:"actions"},addBtn,printBtn,pdfBtn,pngBtn), share, delZone);
   layoutBoard();
 
-  if(lsGet("justMade")===code){ lsSet("justMade",""); setTimeout(()=>toast("케이크가 구워졌어요! 링크를 친구들에게 보내 주세요"),300); }
+  const justMade=lsGet("justMade")===code; if(justMade) lsSet("justMade","");
 
   let alive=true; S.unsub.push(()=>{ alive=false; });
   const sub=head.querySelector(".sub"), h1=head.querySelector("h1");
   api("getCake",{code}).then(c=>{ if(!alive) return;
     V.cake={...c, flavor:(c.flavor in FLAVORS)?c.flavor:"strawberry"};
-    h1.textContent=`${V.cake.to}에게`; sub.textContent=V.cake.title||"";
+    h1.textContent=`${V.cake.to}의 롤링페이퍼`; sub.textContent=V.cake.title||"";
+    if(V.cake.mine){ head.after(V.share); V.share.classList.add("owner");
+      V.share._title.textContent=justMade?"내 롤링페이퍼가 만들어졌어요! 🎉":"내 롤링페이퍼 링크";
+      V.share._lead.textContent="이 링크를 친구들에게 보내 주세요. 링크를 누르면 바로 토핑을 골라 편지를 쓸 수 있어요.";
+      addBtn.textContent="＋ 나도 한 장 올리기"; addBtn.className="btn"; }
+    else { V.share._title.textContent="다른 친구에게도 이 롤링페이퍼 보내기"; }
     addBtn.disabled=false; rememberCake({...V.cake,code}); renderDelZone(); layoutBoard();
     if(!V.cake.mine&&!lsGet("wrote-"+code)) setTimeout(()=>{ if(alive&&!composeEl) openCompose(); },500);
     loadTops(); const t=setInterval(()=>{ if(document.visibilityState==="visible"&&!composeEl) loadTops(); },8000);
@@ -696,11 +714,11 @@ async function buildPages(paged){
     const x=c.getContext("2d"); paper(x,PW,h); x.textAlign="center"; x.textBaseline="alphabetic";
     if(p.first){
       x.fillStyle="#b08a9a"; x.font='24px Silkscreen, monospace'; x.fillText("ROLLING PAPER CAKE",PW/2,150);
-      x.fillStyle="#4a3640"; x.font=`104px ${FT}`; x.fillText(`${V.cake.to}에게`,PW/2,270);
+      x.fillStyle="#4a3640"; x.font=`104px ${FT}`; x.fillText(`${V.cake.to}의 롤링페이퍼`,PW/2,270);
       if(V.cake.title){ x.font=`50px ${FT}`; x.fillStyle="#9a7f8c"; x.fillText(V.cake.title,PW/2,345); }
       x.imageSmoothingEnabled=false; x.drawImage(cakeC,(PW-1040)/2,370,1040,780);
       x.fillStyle="#4a3640"; x.font=`bold 28px ${FB}`; x.fillText(`메시지 ${V.tops.length}개 · ${fmtDate(Date.now())}`,PW/2,1190);
-    } else { x.font=`38px ${FT}`; x.fillStyle="#9a7f8c"; x.fillText(`${V.cake.to}에게 · ${pi+1}쪽`,PW/2,M+30); }
+    } else { x.font=`38px ${FT}`; x.fillStyle="#9a7f8c"; x.fillText(`${V.cake.to}의 롤링페이퍼 · ${pi+1}쪽`,PW/2,M+30); }
     x.textAlign="left";
     p.items.forEach(({t,lines,h:ch,x:cx,y:cy})=>{
       rr(x,cx+5,cy+5,colW,ch,16); x.fillStyle="rgba(74,54,64,.16)"; x.fill();
