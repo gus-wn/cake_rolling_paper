@@ -1,9 +1,11 @@
 /**
  * 토핑케이크 롤링페이퍼 — 저장공간(구글 시트) 스크립트
  *
- * 구글 시트 > 확장 프로그램 > Apps Script 에 이 파일 내용을 그대로 붙여 넣고
- * 배포 > 새 배포 > 웹 앱 (실행: 나 / 액세스 권한: 모든 사용자) 로 배포하세요.
- * 시트 탭(cakes, toppings)은 처음 요청이 올 때 자동으로 만들어집니다.
+ * script.new(새 Apps Script) 또는 구글 시트 > 확장 프로그램 > Apps Script 에
+ * 이 파일 내용을 그대로 붙여 넣고, 배포 > 새 배포 > 웹 앱
+ * (실행: 나 / 액세스 권한: 모든 사용자) 로 배포하세요.
+ * 시트에 붙인 경우 그 시트에, script.new 로 만든 경우 내 드라이브에
+ * '롤링페이퍼 저장소' 시트를 자동으로 만들어 저장합니다.
  */
 
 const HEADERS = {
@@ -109,8 +111,24 @@ const ACTIONS = {
 function out(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
 }
+function book() {
+  const active = SpreadsheetApp.getActiveSpreadsheet();
+  if (active) return active;
+  const props = PropertiesService.getScriptProperties();
+  const id = props.getProperty('SHEET_ID');
+  if (id) { try { return SpreadsheetApp.openById(id); } catch (e) {} }
+  const ss = SpreadsheetApp.create('롤링페이퍼 저장소');
+  props.setProperty('SHEET_ID', ss.getId());
+  return ss;
+}
+/** 편집기에서 한 번 실행하면 저장용 시트를 만들고 주소를 로그에 보여 줘요. */
+function setup() {
+  const ss = book();
+  sheet('cakes'); sheet('toppings');
+  Logger.log('저장용 시트: ' + ss.getUrl());
+}
 function sheet(name) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = book();
   let sh = ss.getSheetByName(name);
   if (!sh) {
     sh = ss.insertSheet(name);
