@@ -86,6 +86,7 @@ button,input,textarea{font:inherit;color:inherit}
 .how{list-style:none;margin:0;padding:0;display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
 .how li{display:flex;align-items:center;gap:6px;background:var(--panel);border:1.5px solid var(--line);border-radius:999px;padding:5px 12px 5px 6px;font-weight:700;font-size:13px}
 .how b{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-size:12px}
+.make-own{display:flex;flex-direction:column;align-items:center;gap:6px;padding-top:18px;border-top:1.5px dashed var(--line)}
 .share.owner{border-color:var(--accent);box-shadow:4px 4px 0 var(--soft)}
 .create{display:flex;flex-direction:column;gap:14px}
 .flavors{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
@@ -451,7 +452,7 @@ function renderCake(code){
     head,
     el("div",{class:"board-tools"},count,el("span",{class:"hint",text:"카드를 누르면 뒤집혀서 메시지가 보여요"}),allBtn),
     board,
-    el("div",{class:"actions"},addBtn,printBtn,pdfBtn,pngBtn), share, delZone);
+    el("div",{class:"actions"},addBtn,printBtn,pdfBtn,pngBtn), delZone);
   layoutBoard();
 
   const justMade=lsGet("justMade")===code; if(justMade) lsSet("justMade","");
@@ -465,7 +466,7 @@ function renderCake(code){
       V.share._title.textContent=justMade?"내 롤링페이퍼가 만들어졌어요! 🎉":"내 롤링페이퍼 링크";
       V.share._lead.textContent="이 링크를 친구들에게 보내 주세요. 링크를 누르면 바로 토핑을 골라 편지를 쓸 수 있어요.";
       addBtn.textContent="＋ 나도 한 장 올리기"; addBtn.className="btn"; }
-    else { V.share._title.textContent="다른 친구에게도 이 롤링페이퍼 보내기"; }
+    else { V.delZone.after(el("div",{class:"make-own"},el("span",{class:"hint",text:"나도 친구들에게 편지를 받고 싶다면?"}),el("button",{class:"btn small",type:"button",onclick:()=>location.hash=""},"🎂 내 롤링페이퍼 만들기"))); }
     addBtn.disabled=false; rememberCake({...V.cake,code}); renderDelZone(); layoutBoard();
     if(!V.cake.mine&&!lsGet("wrote-"+code)) setTimeout(()=>{ if(alive&&!composeEl) openCompose(); },500);
     loadTops(); const t=setInterval(()=>{ if(document.visibilityState==="visible"&&!composeEl) loadTops(); },8000);
