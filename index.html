@@ -481,11 +481,28 @@ function renderCake(code){
     if(err&&err.code==="not_found") forgetCake(code); });
 }
 let loading=false;
+/* 긴 편지 나눠 저장하기: 저장공간이 한 칸에 300자까지만 받아도 잘리지 않게
+   첫 조각은 보통 카드로, 나머지는 "\u2063부모id#순번|내용" 형태의 숨은 조각으로 저장해요 */
+const PART_MARK="\u2063", PART_SIZE=260;
+function splitParts(text){ const ch=Array.from(text), out=[]; let i=0;
+  while(i<ch.length){ let end=Math.min(i+PART_SIZE,ch.length);
+    while(end<ch.length&&end>i+1&&/\s/.test(ch[end-1])) end--;   // 조각 끝이 띄어쓰기·줄바꿈이면 다음 조각으로 넘겨서 지워지지 않게
+    out.push(ch.slice(i,end).join("")); i=end; }
+  return out.length?out:[""]; }
+function mergeParts(list){
+  const parts={}, main=[];
+  list.forEach(t=>{ const tx=String(t.text||"");
+    if(tx.startsWith(PART_MARK)){ const m=tx.slice(1).match(/^([^#|]+)#(\d+)\|([\s\S]*)$/);
+      if(m){ (parts[m[1]]=parts[m[1]]||[]).push({i:+m[2],text:m[3],id:t.id}); return; } }
+    main.push(t); });
+  return main.map(t=>{ const ps=(parts[t.id]||[]).sort((a,b)=>a.i-b.i);
+    return ps.length?{...t,text:t.text+ps.map(p=>p.text).join(""),partIds:ps.map(p=>p.id)}:t; });
+}
 async function loadTops(){
   if(loading||!V.cake) return; loading=true;
   try{ const list=await api("listToppings",{cake:V.code});
     const sig=JSON.stringify(list.map(t=>[t.id,t.mine])), changed=sig!==V.sig; V.sig=sig;
-    V.tops=list.filter(t=>SPR[t.sprite]).map(t=>({...t,x:+t.x,y:+t.y})).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+    V.tops=mergeParts(list).filter(t=>SPR[t.sprite]).map(t=>({...t,x:+t.x,y:+t.y})).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
     if(changed) layoutBoard();
   }catch(e){}
   finally{ loading=false; }
@@ -585,7 +602,7 @@ function ornament(t){
   const len=(t.text||"").length, fs=len<40?15:len<90?13:len<200?12:11;
   const name=t.name||"익명";
   const del=(t.mine||(V.cake&&V.cake.mine))?el("button",{class:"orn-del",type:"button","aria-label":"메시지 지우기",onclick:e=>{ e.stopPropagation();
-      if(del.dataset.armed){ api("deleteTopping",{id:t.id}).then(()=>{ V.sig=""; V.flipped.delete(t.id); toast("메시지를 지웠어요"); loadTops(); }).catch(err=>toast(errMsg(err,"지우지 못했어요"))); }
+      if(del.dataset.armed){ Promise.all([t.id,...(t.partIds||[])].map(id=>api("deleteTopping",{id}))).then(()=>{ V.sig=""; V.flipped.delete(t.id); toast("메시지를 지웠어요"); loadTops(); }).catch(err=>toast(errMsg(err,"지우지 못했어요"))); }
       else { del.dataset.armed="1"; del.textContent="지울까요?"; setTimeout(()=>{ delete del.dataset.armed; del.textContent="✕"; },3000); } }},"✕"):null;
   const card=el("div",{class:"orn",role:"button",tabindex:"0","aria-pressed":"false","aria-label":`${SPR[t.sprite].ko} 토핑 카드 (누르면 편지가 보여요)`,style:`--n-bg:${noteColor(t.note)};--rot:${((t.id||"").charCodeAt(0)%5-2)*0.8}deg`,
       onclick:()=>{ const on=!card.classList.contains("flipped"); on?V.flipped.add(t.id):V.flipped.delete(t.id); setFlip(card,on); syncAllBtn(); },
@@ -638,8 +655,8 @@ function openCompose(){
   // big flip card
   let frontArt=el("div",{class:"wc-empty"},el("span",{class:"plus",text:"?"}),el("span",{text:"아래에서 토핑을 골라 주세요"}));
   const sigName=el("span",{text:"– "+(lsGet("lastName")||"이름")});
-  const msgIn=el("textarea",{id:"cmsg",class:"wc-text",maxlength:"500",placeholder:`${to}에게 하고 싶은 말을 적어 주세요`,tabindex:"-1"});
-  const left=el("span",{class:"wc-count",text:"0 / 500"});
+  const msgIn=el("textarea",{id:"cmsg",class:"wc-text",maxlength:"600",placeholder:`${to}에게 하고 싶은 말을 적어 주세요`,tabindex:"-1"});
+  const left=el("span",{class:"wc-count",text:"0 / 600"});
   const card=el("div",{class:"orn wc"},el("div",{class:"orn-inner"},
     el("div",{class:"face front"},frontArt),
     el("div",{class:"face back"},msgIn,el("div",{class:"sig"},sigName,left))));
@@ -660,7 +677,7 @@ function openCompose(){
     el("div",{class:"wc-actions"},nextBtn));
 
   // step 2 controls
-  msgIn.addEventListener("input",()=>left.textContent=`${msgIn.value.length} / 500`);
+  msgIn.addEventListener("input",()=>left.textContent=`${msgIn.value.length} / 600`);
   const save=el("button",{class:"btn primary",type:"submit"},"케이크에 올리기 🎂");
   const step2=el("div",{class:"wc-step",hidden:true},
     el("p",{class:"hint",style:"margin:0;text-align:center",text:"② 토핑 뒷면에 편지를 써요. 케이크에서는 토핑을 눌러야 편지가 보여요."}),
@@ -681,7 +698,10 @@ function openCompose(){
       if(!text){ msgIn.focus(); toast("편지를 적어 주세요"); return; }
       save.disabled=true; save.textContent="올리는 중…";
       const p=findFreeSpot();
-      try{ const id=await api("addTopping",{cake:V.code,sprite:st.sprite,note:st.note,x:p.x,y:p.y,name:name||"익명",text});
+      try{ const chunks=splitParts(text);
+        const id=await api("addTopping",{cake:V.code,sprite:st.sprite,note:st.note,x:p.x,y:p.y,name:name||"익명",text:chunks[0]});
+        for(let i=1;i<chunks.length;i++){ save.textContent=`올리는 중… (${i+1}/${chunks.length})`;
+          await api("addTopping",{cake:V.code,sprite:st.sprite,note:st.note,x:p.x,y:p.y,name:name||"익명",text:PART_MARK+id+"#"+i+"|"+chunks[i]}); }
         lsSet("lastName",name); lsSet("wrote-"+V.code,"1"); lsSet("draft-"+V.code,text); closeCompose(); V.sig=""; V.justAdded=id; await loadTops();
         const c=V.board.querySelector(`.orn[data-id="${id}"]`); if(c){ c.scrollIntoView({behavior:"smooth",block:"center"}); c.classList.add("pop"); }
         const saved=V.tops.find(t=>t.id===id);

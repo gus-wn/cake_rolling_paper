@@ -16,7 +16,7 @@ const FLAVORS = ['strawberry', 'choco', 'matcha', 'lavender'];
 const SPRITES = ['strawberry', 'cherry', 'candle', 'heart', 'star', 'macaron', 'cookie', 'blueberry', 'cream', 'flower', 'choco', 'gummy'];
 const NOTES = ['cream', 'berry', 'mint', 'sky', 'lav'];
 const MAX_TOPPINGS_PER_CAKE = 200;
-const MAX_TEXT = 500; // 편지 최대 글자 수
+const MAX_TEXT = 600; // 편지 최대 글자 수
 const CODE_CHARS = 'abcdefghjkmnpqrstuvwxyz23456789';
 
 function doGet() {
