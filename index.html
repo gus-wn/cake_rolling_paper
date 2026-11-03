@@ -87,6 +87,9 @@ button,input,textarea{font:inherit;color:inherit}
 .how li{display:flex;align-items:center;gap:6px;background:var(--panel);border:1.5px solid var(--line);border-radius:999px;padding:5px 12px 5px 6px;font-weight:700;font-size:13px}
 .how b{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-size:12px}
 .make-own{display:flex;flex-direction:column;align-items:center;gap:6px;padding-top:18px;border-top:1.5px dashed var(--line)}
+.cut-warn{border-color:var(--danger);display:flex;flex-direction:column;gap:10px}
+.cut-warn h3{color:var(--danger)}
+.cut-text{width:100%;min-height:120px;border:2px solid var(--line);border-radius:8px;background:var(--bg);padding:10px;font:inherit;line-height:1.6;resize:vertical}
 .share.owner{border-color:var(--accent);box-shadow:4px 4px 0 var(--soft)}
 .create{display:flex;flex-direction:column;gap:14px}
 .flavors{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
@@ -611,6 +614,18 @@ function renderDelZone(){ const z=V.delZone; z.replaceChildren(); z.hidden=!(V.c
     catch(e){ toast(errMsg(e,"지우지 못했어요")); } })});
   z.append(el("span",{class:"hint",text:"이 기기에서 만든 케이크예요. "}),b); }
 
+/* 저장공간이 편지를 잘라 저장했을 때: 원문을 이 기기에 보관하고 알려 줘요 */
+function showCutWarning(text,savedLen){
+  const old=$("#cut-warn"); if(old) old.remove();
+  const box=el("textarea",{readonly:true,class:"cut-text","aria-label":"내가 쓴 편지 원문"}); box.value=text;
+  const w=el("section",{id:"cut-warn",class:"panel cut-warn"},
+    el("h3",{text:"편지가 다 저장되지 않았어요"}),
+    el("p",{class:"hint",style:"margin:0",text:`${text.length}자를 썼는데 ${savedLen}자까지만 저장됐어요. 아래 원문은 이 기기에 보관해 뒀어요. 롤링페이퍼 주인에게 알려 주시고, 문제가 해결되면 내 카드를 ✕로 지운 뒤 원문을 붙여 넣어 다시 올려 주세요.`}),
+    box,
+    el("div",{class:"row"},el("button",{class:"btn small primary",type:"button",onclick:()=>copyText(text,box)},"원문 복사"),
+      el("button",{class:"btn small ghost",type:"button",onclick:()=>w.remove()},"닫기")));
+  V.head.after(w); w.scrollIntoView({behavior:"smooth",block:"center"});
+}
 /* ===================== compose: ① 토핑 고르기 → ② 뒷면에 편지 쓰기 ===================== */
 let composeEl=null;
 function closeCompose(){ if(composeEl){ composeEl.remove(); composeEl=null; document.removeEventListener("keydown",escClose); } }
@@ -667,9 +682,11 @@ function openCompose(){
       save.disabled=true; save.textContent="올리는 중…";
       const p=findFreeSpot();
       try{ const id=await api("addTopping",{cake:V.code,sprite:st.sprite,note:st.note,x:p.x,y:p.y,name:name||"익명",text});
-        lsSet("lastName",name); lsSet("wrote-"+V.code,"1"); closeCompose(); V.sig=""; V.justAdded=id; await loadTops();
+        lsSet("lastName",name); lsSet("wrote-"+V.code,"1"); lsSet("draft-"+V.code,text); closeCompose(); V.sig=""; V.justAdded=id; await loadTops();
         const c=V.board.querySelector(`.orn[data-id="${id}"]`); if(c){ c.scrollIntoView({behavior:"smooth",block:"center"}); c.classList.add("pop"); }
-        toast("케이크에 올라갔어요! 🎉"); }
+        const saved=V.tops.find(t=>t.id===id);
+        if(saved&&(saved.text||"").length<text.length){ showCutWarning(text,(saved.text||"").length); }
+        else { lsSet("draft-"+V.code,""); toast("케이크에 올라갔어요! 🎉"); } }
       catch(err){ save.disabled=false; save.textContent="케이크에 올리기 🎂"; toast(errMsg(err,"올리지 못했어요. 다시 시도해 주세요")); } }},
     el("div",{class:"row",style:"justify-content:space-between;align-items:flex-start"},
       el("div",{style:"min-width:0;flex:1"},el("div",{class:"pixel-label",text:"Rolling paper cake"}),el("h2",{text:`${to}에게 마음 토핑 올리기`})),

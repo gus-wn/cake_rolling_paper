@@ -16,10 +16,11 @@ const FLAVORS = ['strawberry', 'choco', 'matcha', 'lavender'];
 const SPRITES = ['strawberry', 'cherry', 'candle', 'heart', 'star', 'macaron', 'cookie', 'blueberry', 'cream', 'flower', 'choco', 'gummy'];
 const NOTES = ['cream', 'berry', 'mint', 'sky', 'lav'];
 const MAX_TOPPINGS_PER_CAKE = 200;
+const MAX_TEXT = 500; // 편지 최대 글자 수
 const CODE_CHARS = 'abcdefghjkmnpqrstuvwxyz23456789';
 
 function doGet() {
-  return out({ ok: true, data: '토핑케이크 롤링페이퍼 저장공간이 작동하고 있어요.' });
+  return out({ ok: true, data: '토핑케이크 롤링페이퍼 저장공간이 작동하고 있어요. (편지 최대 ' + MAX_TEXT + '자)' });
 }
 
 function doPost(e) {
@@ -79,7 +80,7 @@ const ACTIONS = {
 
   addTopping(req) {
     const cake = str(req.cake, 12), key = str(req.key, 64);
-    const text = str(req.text, 500), name = str(req.name, 20) || '익명';
+    const text = str(req.text, MAX_TEXT), name = str(req.name, 20) || '익명';
     const sprite = SPRITES.indexOf(req.sprite) >= 0 ? req.sprite : 'strawberry';
     const note = NOTES.indexOf(req.note) >= 0 ? req.note : 'cream';
     const x = clampInt(req.x, 0, 159), y = clampInt(req.y, 0, 119);
