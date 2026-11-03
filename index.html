@@ -700,18 +700,40 @@ function paper(ctx,w,h){ ctx.fillStyle="#fffbfc"; ctx.fillRect(0,0,w,h); ctx.str
   for(let x=0.5;x<w;x+=38){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
   for(let y=0.5;y<h;y+=38){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); } }
 async function buildPages(paged){
-  await Promise.all([`96px ${FT}`,`24px ${FB}`,`bold 24px ${FB}`,"24px Silkscreen"].map(f=>document.fonts.load(f,"가나다Aa").catch(()=>{})));
+  await Promise.all([`96px ${FT}`,`22px ${FB}`,`bold 22px ${FB}`,"14px Silkscreen"].map(f=>document.fonts.load(f,"가나다Aa").catch(()=>{})));
   await document.fonts.ready.catch(()=>{});
-  const PW=B4.PW, PH=B4.PH, M=84, GAP=26, COLS=4, colW=(PW-2*M-GAP*(COLS-1))/COLS, PAD=22, LH=38, TOP=30, HEAD=48;
-  const meas=document.createElement("canvas").getContext("2d"); meas.font=`24px ${FB}`;
-  const cards=V.tops.map(t=>{ const lines=wrapLines(meas,t.text||"",colW-PAD*2); return {t,lines,h:TOP+HEAD+10+lines.length*LH+PAD}; });
+  const PW=B4.PW, PH=B4.PH, M=80, GAP=24, COLS=3, colW=(PW-2*M-GAP*(COLS-1))/COLS;
+  const PAD=22, TOP=26, HEAD=46, LH=34, FS=22, BOTTOM=PH-M, NEXT_TOP=M+80, MIN_LINES=4;
   const START=1240;
-  const pages=[{items:[],first:true,endY:START}]; let y=START, cur=pages[0];
-  for(let i=0;i<cards.length;i+=COLS){ const row=cards.slice(i,i+COLS), rh=Math.max(...row.map(c=>c.h));
-    if(paged&&y+rh>PH-M&&(cur.items.length||cur.first)){ cur={items:[],first:false}; pages.push(cur); y=M+90; }
-    row.forEach((c,j)=>cur.items.push({...c,x:M+j*(colW+GAP),y})); y+=rh+GAP; cur.endY=y; }
+  const meas=document.createElement("canvas").getContext("2d"); meas.font=`${FS}px ${FB}`;
+  const cardH=n=>TOP+HEAD+10+n*LH+PAD;
+  const linesFit=space=>Math.floor((space-(TOP+HEAD+10+PAD))/LH);
+
+  // 1) 편지 전체를 줄 단위로 나눠요 (글자는 하나도 빼지 않아요)
+  const queue=V.tops.map(t=>({t,lines:wrapLines(meas,t.text||"",colW-PAD*2),cont:false}));
+
+  // 2) 가장 짧은 단부터 채우고, 남은 칸에 안 들어가면 다음 장으로, 한 장보다 긴 편지는 나눠서 이어 붙여요
+  const newPage=first=>({first,items:[],cols:Array(COLS).fill(first?START:NEXT_TOP)});
+  const pages=[newPage(true)]; let page=pages[0];
+  const place=(card,c,h)=>{ page.items.push({...card,x:M+c*(colW+GAP),y:page.cols[c],h}); page.cols[c]+=h+GAP; };
+  const fresh=BOTTOM-NEXT_TOP;
+  while(queue.length){
+    const card=queue[0], need=cardH(card.lines.length);
+    const order=page.cols.map((y,i)=>i).sort((i,j)=>page.cols[i]-page.cols[j]);
+    const room=i=>(paged?BOTTOM:Infinity)-page.cols[i];
+    const c=order.find(i=>room(i)>=need);
+    if(c!==undefined){ place(card,c,need); queue.shift(); continue; }
+    if(need>fresh){                      // 한 장보다 긴 편지: 들어가는 만큼 넣고 나머지는 이어서
+      const s=order[0], fit=linesFit(room(s));
+      if(fit>=MIN_LINES){ place({...card,lines:card.lines.slice(0,fit),more:true},s,cardH(fit));
+        queue[0]={t:card.t,lines:card.lines.slice(fit),cont:true}; continue; }
+    }
+    page=newPage(false); pages.push(page); // 이 장에 자리가 없으면 새 장
+  }
+
   const cakeC=document.createElement("canvas"); paintCake(cakeC,V.cake.flavor,V.tops);
-  return pages.map((p,pi)=>{ const h=paged?PH:Math.max(PH,p.endY+M); const c=document.createElement("canvas"); c.width=PW; c.height=h;
+  return pages.map((p,pi)=>{ const endY=Math.max(...p.cols); const h=paged?PH:Math.max(PH,endY+M);
+    const c=document.createElement("canvas"); c.width=PW; c.height=h;
     const x=c.getContext("2d"); paper(x,PW,h); x.textAlign="center"; x.textBaseline="alphabetic";
     if(p.first){
       x.fillStyle="#b08a9a"; x.font='24px Silkscreen, monospace'; x.fillText("ROLLING PAPER CAKE",PW/2,150);
@@ -721,19 +743,20 @@ async function buildPages(paged){
       x.fillStyle="#4a3640"; x.font=`bold 28px ${FB}`; x.fillText(`메시지 ${V.tops.length}개 · ${fmtDate(Date.now())}`,PW/2,1190);
     } else { x.font=`38px ${FT}`; x.fillStyle="#9a7f8c"; x.fillText(`${V.cake.to}의 롤링페이퍼 · ${pi+1}쪽`,PW/2,M+30); }
     x.textAlign="left";
-    p.items.forEach(({t,lines,h:ch,x:cx,y:cy})=>{
+    p.items.forEach(({t,lines,h:ch,x:cx,y:cy,cont,more})=>{
       rr(x,cx+5,cy+5,colW,ch,16); x.fillStyle="rgba(74,54,64,.16)"; x.fill();
       rr(x,cx,cy,colW,ch,16); x.fillStyle=noteColor(t.note); x.fill(); x.lineWidth=2.5; x.strokeStyle="#4a3640"; x.stroke();
       x.beginPath(); x.arc(cx+colW/2,cy,9,0,Math.PI*2); x.fillStyle="#fff"; x.fill(); x.stroke();
       const s=SPR[t.sprite], sc=5; x.imageSmoothingEnabled=false;
       s.px.forEach(([px,py,col])=>{ x.fillStyle=`rgb(${col})`; x.fillRect(cx+PAD+px*sc,cy+TOP+py*sc+(HEAD-s.h*sc)/2,sc,sc); });
       x.fillStyle="#4a3640"; x.textBaseline="middle";
-      x.font='14px Silkscreen, monospace'; x.globalAlpha=.55; x.fillText("FROM.",cx+PAD+s.w*sc+12,cy+TOP+HEAD/2-12); x.globalAlpha=1;
-      x.font=`bold 24px ${FB}`; let nm=t.name||"익명"; const nmW=colW-PAD*2-s.w*sc-12;
-      while(nm.length>1&&x.measureText(nm).width>nmW) nm=nm.slice(0,-1); if(nm!==(t.name||"익명")) nm=nm.slice(0,-1)+"…";
+      x.font='14px Silkscreen, monospace'; x.globalAlpha=.55; x.fillText(cont?"FROM. (CONTINUED)":"FROM.",cx+PAD+s.w*sc+12,cy+TOP+HEAD/2-12); x.globalAlpha=1;
+      x.font=`bold 22px ${FB}`; const full=t.name||"익명"; let nm=full; const nmW=colW-PAD*2-s.w*sc-12;
+      while(nm.length>1&&x.measureText(nm).width>nmW) nm=nm.slice(0,-1); if(nm!==full) nm=nm.slice(0,-1)+"…";
       x.fillText(nm,cx+PAD+s.w*sc+12,cy+TOP+HEAD/2+10);
-      x.textBaseline="alphabetic"; x.font=`24px ${FB}`;
-      lines.forEach((l,li)=>x.fillText(l,cx+PAD,cy+TOP+HEAD+10+LH*(li+1)-10));
+      x.textBaseline="alphabetic"; x.font=`${FS}px ${FB}`;
+      lines.forEach((l,li)=>x.fillText(l,cx+PAD,cy+TOP+HEAD+10+LH*(li+1)-9));
+      if(more){ x.font=`bold 16px ${FB}`; x.globalAlpha=.55; x.textAlign="right"; x.fillText("이어서 계속 →",cx+colW-PAD,cy+ch-6); x.textAlign="left"; x.globalAlpha=1; }
     });
     return c; });
 }
