@@ -482,20 +482,23 @@ function renderCake(code){
 }
 let loading=false;
 /* 긴 편지 나눠 저장하기: 저장공간이 한 칸에 300자까지만 받아도 잘리지 않게
-   첫 조각은 보통 카드로, 나머지는 "\u2063부모id#순번|내용" 형태의 숨은 조각으로 저장해요 */
-const PART_MARK="\u2063", PART_SIZE=260;
+   첫 조각은 보통 카드로, 나머지는 "[[part:부모id#순번]]내용" 형태의 조각으로 저장하고
+   불러올 때 부모 카드 하나로 합쳐요. (예전 형식 "부모id#순번|내용"도 알아봐요) */
+const PART_SIZE=260;
+const partTag=(id,i)=>"[[part:"+id+"#"+i+"]]";
 function splitParts(text){ const ch=Array.from(text), out=[]; let i=0;
   while(i<ch.length){ let end=Math.min(i+PART_SIZE,ch.length);
     while(end<ch.length&&end>i+1&&/\s/.test(ch[end-1])) end--;   // 조각 끝이 띄어쓰기·줄바꿈이면 다음 조각으로 넘겨서 지워지지 않게
     out.push(ch.slice(i,end).join("")); i=end; }
   return out.length?out:[""]; }
+const PART_RE=/^[\s'\u200B-\u206F\uFEFF]*(\[\[part:)?([0-9A-Za-z_-]+)#(\d+)(?:\]\]|\|)([\s\S]*)$/;
 function mergeParts(list){
-  const parts={}, main=[];
-  list.forEach(t=>{ const tx=String(t.text||"");
-    if(tx.startsWith(PART_MARK)){ const m=tx.slice(1).match(/^([^#|]+)#(\d+)\|([\s\S]*)$/);
-      if(m){ (parts[m[1]]=parts[m[1]]||[]).push({i:+m[2],text:m[3],id:t.id}); return; } }
+  const ids=new Set(list.map(t=>String(t.id).trim())), parts={}, main=[];
+  list.forEach(t=>{ const m=String(t.text||"").match(PART_RE);
+    // 새 형식은 항상 조각, 예전 형식은 같은 케이크에 그 부모 카드가 있을 때만 조각으로 봐요
+    if(m&&(m[1]||ids.has(m[2]))){ (parts[m[2]]=parts[m[2]]||[]).push({i:+m[3],text:m[4],id:t.id}); return; }
     main.push(t); });
-  return main.map(t=>{ const ps=(parts[t.id]||[]).sort((a,b)=>a.i-b.i);
+  return main.map(t=>{ const ps=(parts[String(t.id).trim()]||[]).sort((a,b)=>a.i-b.i);
     return ps.length?{...t,text:t.text+ps.map(p=>p.text).join(""),partIds:ps.map(p=>p.id)}:t; });
 }
 async function loadTops(){
@@ -701,7 +704,7 @@ function openCompose(){
       try{ const chunks=splitParts(text);
         const id=await api("addTopping",{cake:V.code,sprite:st.sprite,note:st.note,x:p.x,y:p.y,name:name||"익명",text:chunks[0]});
         for(let i=1;i<chunks.length;i++){ save.textContent=`올리는 중… (${i+1}/${chunks.length})`;
-          await api("addTopping",{cake:V.code,sprite:st.sprite,note:st.note,x:p.x,y:p.y,name:name||"익명",text:PART_MARK+id+"#"+i+"|"+chunks[i]}); }
+          await api("addTopping",{cake:V.code,sprite:st.sprite,note:st.note,x:p.x,y:p.y,name:name||"익명",text:partTag(id,i)+chunks[i]}); }
         lsSet("lastName",name); lsSet("wrote-"+V.code,"1"); lsSet("draft-"+V.code,text); closeCompose(); V.sig=""; V.justAdded=id; await loadTops();
         const c=V.board.querySelector(`.orn[data-id="${id}"]`); if(c){ c.scrollIntoView({behavior:"smooth",block:"center"}); c.classList.add("pop"); }
         const saved=V.tops.find(t=>t.id===id);
