@@ -228,8 +228,10 @@ button,input,textarea{font:inherit;color:inherit}
 .alb-thumb img{width:100%;height:100%;object-fit:contain}
 .alb-no{position:absolute;top:4px;left:4px;background:rgba(74,54,64,.75);color:#fff;font-size:11px;font-weight:800;border-radius:999px;padding:1px 7px}
 .alb-meta{display:flex;flex-direction:column;gap:5px;min-width:0}
-.alb-date{font-size:12px;font-weight:700}
-.alb-date.guess{color:var(--muted);font-weight:400}
+.alb-date-wrap{display:flex;flex-direction:column;gap:2px;min-width:0}
+.alb-dateinp{border:1.5px solid var(--line);border-radius:7px;background:var(--bg);padding:4px 6px;font-size:13px;font-weight:700;width:100%;min-width:0;color:var(--ink)}
+.alb-date{font-size:11px;color:var(--muted)}
+.alb-date.guess{color:var(--danger);font-weight:700}
 .alb-cap{border:1.5px solid var(--line);border-radius:7px;background:var(--bg);padding:5px 8px;font-size:13px;width:100%;min-width:0}
 .alb-tools{display:flex;gap:4px;justify-content:flex-end}
 .alb-tools .btn{padding:3px 9px;font-size:12px}
@@ -1156,13 +1158,23 @@ function renderAlbum(){
       const move=d=>{ const a=ALB.photos, i=a.indexOf(p), j=i+d; if(j<0||j>=a.length) return; [a[i],a[j]]=[a[j],a[i]]; renderList(); schedule(); };
       return el("div",{class:"alb-item"},
         el("div",{class:"alb-thumb"},el("img",{src:p.thumb,alt:p.name}),el("span",{class:"alb-no",text:String(idx+1)})),
-        el("div",{class:"alb-meta"},el("span",{class:"alb-date"+(p.fromExif?"":" guess"),text:fmtDay(p.time)+(p.fromExif?"":" · 파일 날짜")}),cap,
+        el("div",{class:"alb-meta"},dateBox(p),cap,
           el("div",{class:"alb-tools"},
             ALB.sort==="manual"?el("button",{class:"btn small ghost",type:"button","aria-label":"앞으로",onclick:()=>move(-1)},"◀"):null,
             ALB.sort==="manual"?el("button",{class:"btn small ghost",type:"button","aria-label":"뒤로",onclick:()=>move(1)},"▶"):null,
             el("button",{class:"btn small ghost",type:"button","aria-label":"빼기",onclick:()=>{ ALB.photos=ALB.photos.filter(z=>z!==p); const b=bmpCache.get(p.id); if(b&&b.close) b.close(); bmpCache.delete(p.id); renderList(); schedule(); }},"✕"))));
     }):[el("div",{class:"empty",text:"아직 사진이 없어요. 위의 '사진 올리기'를 눌러 주세요."})]));
     ALB.ui.btns.forEach(b=>b.disabled=!ph.length);
+  }
+  function dateBox(p){
+    const d=new Date(p.time), v=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    const inp=el("input",{type:"date",class:"alb-dateinp",value:v,"aria-label":"사진 날짜"});
+    inp.addEventListener("change",()=>{ const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(inp.value); if(!m) return;
+      const old=new Date(p.time);   // 같은 날 사진끼리 순서가 유지되게 시각은 그대로 둬요
+      p.time=new Date(+m[1],+m[2]-1,+m[3],old.getHours(),old.getMinutes(),old.getSeconds()).getTime(); p.dateEdited=true;
+      renderList(); schedule(); toast(ALB.sort==="time"?"날짜를 바꿨어요. 순서도 다시 맞췄어요":"날짜를 바꿨어요"); });
+    const tag=p.dateEdited?"직접 고친 날짜":p.fromExif?"찍은 날짜":"파일 날짜 · 확인해 주세요";
+    return el("label",{class:"alb-date-wrap"},inp,el("span",{class:"alb-date"+(p.fromExif||p.dateEdited?"":" guess"),text:tag}));
   }
   function schedule(ms=300){ clearTimeout(albRenderT); albRenderT=setTimeout(drawPreview,ms); }
   async function drawPreview(){
