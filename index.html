@@ -188,6 +188,54 @@ button,input,textarea{font:inherit;color:inherit}
 .swatch[aria-pressed="true"]{box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--accent)}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:999px;font-size:14px;z-index:60;max-width:calc(100% - 32px)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ---------- chooser ---------- */
+.chooser{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:620px){.chooser{grid-template-columns:1fr}}
+.choice{position:relative;text-align:left;background:var(--panel);border:2px solid var(--ink);border-radius:16px;padding:18px 18px 16px;box-shadow:0 4px 0 var(--ink);cursor:pointer;display:flex;flex-direction:column;gap:8px;transition:transform .1s;color:var(--ink)}
+.choice:hover{transform:translateY(-3px)}
+.choice:active{transform:translateY(2px);box-shadow:0 1px 0 var(--ink)}
+.choice:focus-visible{outline:3px solid var(--mint);outline-offset:3px}
+.choice h2{font-size:24px}
+.choice p{margin:0;color:var(--muted);font-size:14px}
+.choice-num{position:absolute;top:10px;left:10px;z-index:2;box-shadow:0 0 0 3px var(--panel);width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-weight:800;font-size:14px}
+.choice-go{font-weight:800;color:var(--accent);font-size:14px;margin-top:2px}
+.ch-art{height:150px;display:flex;align-items:center;justify-content:center;position:relative;background:var(--soft);border-radius:12px;overflow:hidden}
+.ch-art>img{height:120px;image-rendering:pixelated}
+.ch-stickers{position:absolute;inset:0;pointer-events:none}
+.ch-stickers img{position:absolute;width:30px;image-rendering:pixelated}
+.ch-stickers img:nth-child(1){left:14%;top:16%}.ch-stickers img:nth-child(2){right:14%;top:20%}.ch-stickers img:nth-child(3){right:20%;bottom:14%}
+.polas{gap:0}
+.pola{width:86px;height:104px;background:#fff;border:2px solid #4a3640;border-radius:6px;padding:7px 7px 22px;transform:rotate(var(--r));margin:0 -10px;box-shadow:3px 3px 0 rgba(74,54,64,.2);position:relative}
+.pola::before{content:"";position:absolute;top:-9px;left:50%;width:44px;height:16px;transform:translateX(-50%) rotate(-4deg);background:var(--c);opacity:.9}
+.pola-img{width:100%;height:100%;background:var(--c);display:grid;place-items:center}
+.pola-img img{width:38px;image-rendering:pixelated}
+/* ---------- album ---------- */
+.drop{border:2.5px dashed var(--accent);border-radius:14px;background:var(--soft);padding:22px 14px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;text-align:center}
+.drop.on{background:var(--panel);border-style:solid}
+.drop b{font-family:var(--f-title);font-weight:400;font-size:24px}
+.drop-icons{display:flex;gap:10px}.drop-icons img{width:30px;image-rendering:pixelated}
+.drop:focus-visible{outline:3px solid var(--mint);outline-offset:3px}
+.alb-status:empty{display:none}
+.flavor.sm img{max-width:80px}
+.seg{display:inline-flex;border:2px solid var(--line);border-radius:999px;overflow:hidden;align-self:flex-start;flex-wrap:wrap}
+.seg button{border:0;background:transparent;padding:7px 14px;font-weight:700;font-size:13px;cursor:pointer;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.check{display:flex;align-items:center;gap:4px;font-size:14px;margin-top:6px;cursor:pointer}
+.alb-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.alb-item{background:var(--panel);border:2px solid var(--line);border-radius:12px;padding:8px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.alb-thumb{position:relative;aspect-ratio:4/3;border-radius:8px;overflow:hidden;background:var(--soft);max-width:100%}
+.alb-thumb img{width:100%;height:100%;object-fit:cover}
+.alb-no{position:absolute;top:4px;left:4px;background:rgba(74,54,64,.75);color:#fff;font-size:11px;font-weight:800;border-radius:999px;padding:1px 7px}
+.alb-meta{display:flex;flex-direction:column;gap:5px;min-width:0}
+.alb-date{font-size:12px;font-weight:700}
+.alb-date.guess{color:var(--muted);font-weight:400}
+.alb-cap{border:1.5px solid var(--line);border-radius:7px;background:var(--bg);padding:5px 8px;font-size:13px;width:100%;min-width:0}
+.alb-tools{display:flex;gap:4px;justify-content:flex-end}
+.alb-tools .btn{padding:3px 9px;font-size:12px}
+.alb-preview{display:flex;flex-direction:column;gap:18px;width:100%}
+.alb-fig{margin:0;display:flex;flex-direction:column;align-items:center;gap:6px}
+.alb-sheet{width:100%;height:auto;max-width:1000px;border:2px solid var(--ink);border-radius:6px;box-shadow:4px 4px 0 var(--line);background:#fffbfc}
 #print-root{display:none}
 @page{size:257mm 364mm;margin:0}
 @media print{
@@ -360,7 +408,10 @@ function route(){
   clearSubs(); closeCompose();
   const h=location.hash.replace(/^#/,"");
   const m=h.match(/^cake-([a-z0-9]{4,12})$/);
-  if(m) renderCake(m[1]); else renderHome();
+  if(m) renderCake(m[1]);
+  else if(h==="paper") renderHome();
+  else if(h==="album") renderAlbum();
+  else renderChooser();
   window.scrollTo(0,0);
 }
 window.addEventListener("hashchange",route);
@@ -368,6 +419,7 @@ window.addEventListener("hashchange",route);
 /* ===================== home ===================== */
 function renderHome(){
   const app=$("#app"); app.replaceChildren();
+  app.append(el("div",{class:"topbar"},el("button",{class:"btn small ghost",type:"button",onclick:()=>location.hash=""},"← 처음으로"),el("span",{class:"pixel-label",text:"rolling paper"})));
   const heroBoard=el("div",{class:"board hero-board",role:"group","aria-label":"메시지 카드가 걸린 예시 케이크"});
   app.append(el("section",{class:"hero"},
     el("div",{class:"hero-text"},
@@ -470,7 +522,7 @@ function renderCake(code){
       V.share._title.textContent=justMade?"내 롤링페이퍼가 만들어졌어요! 🎉":"내 롤링페이퍼 링크";
       V.share._lead.textContent="이 링크를 친구들에게 보내 주세요. 링크를 누르면 바로 토핑을 골라 편지를 쓸 수 있어요.";
       addBtn.textContent="＋ 나도 한 장 올리기"; addBtn.className="btn"; }
-    else { V.delZone.after(el("div",{class:"make-own"},el("span",{class:"hint",text:"나도 친구들에게 편지를 받고 싶다면?"}),el("button",{class:"btn small",type:"button",onclick:()=>location.hash=""},"🎂 내 롤링페이퍼 만들기"))); }
+    else { V.delZone.after(el("div",{class:"make-own"},el("span",{class:"hint",text:"나도 친구들에게 편지를 받고 싶다면?"}),el("button",{class:"btn small",type:"button",onclick:()=>location.hash="paper"},"🎂 내 롤링페이퍼 만들기"))); }
     addBtn.disabled=false; rememberCake({...V.cake,code}); renderDelZone(); layoutBoard();
     if(!V.cake.mine&&!lsGet("wrote-"+code)) setTimeout(()=>{ if(alive&&!composeEl) openCompose(); },500);
     loadTops(); const t=setInterval(()=>{ if(document.visibilityState==="visible"&&!composeEl) loadTops(); },8000);
@@ -630,7 +682,7 @@ function confirmInline(btn,label,fn){ const wrap=el("span",{},el("span",{text:la
   btn.replaceWith(wrap); }
 function renderDelZone(){ const z=V.delZone; z.replaceChildren(); z.hidden=!(V.cake&&V.cake.mine); if(z.hidden) return;
   const b=el("button",{class:"linkish",type:"button",text:"이 케이크 삭제하기",onclick:()=>confirmInline(b,"케이크와 메시지를 모두 지울까요?",async()=>{
-    try{ await api("deleteCake",{code:V.code}); forgetCake(V.code); toast("케이크를 지웠어요"); location.hash=""; }
+    try{ await api("deleteCake",{code:V.code}); forgetCake(V.code); toast("케이크를 지웠어요"); location.hash="paper"; }
     catch(e){ toast(errMsg(e,"지우지 못했어요")); } })});
   z.append(el("span",{class:"hint",text:"이 기기에서 만든 케이크예요. "}),b); }
 
@@ -824,6 +876,310 @@ async function exportFile(kind){
   finally{ V.exportBtns.forEach(b=>b.disabled=false); }
 }
 window.addEventListener("afterprint",()=>{ const r=$("#print-root"); if(r) r.remove(); });
+
+/* ===================== 첫 화면: 두 가지 선택 ===================== */
+function renderChooser(){
+  const app=$("#app"); app.replaceChildren();
+  const paperArt=el("div",{class:"ch-art"},el("img",{src:cakeURL("strawberry"),alt:""}),
+    el("div",{class:"ch-stickers"},["strawberry","heart","star"].map(id=>el("img",{src:spriteURL(id,4),alt:""}))));
+  const albumArt=el("div",{class:"ch-art polas"},
+    ["#ffdfe7","#d8f2e5","#d9ecfd"].map((c,i)=>el("div",{class:"pola",style:`--r:${[-8,3,10][i]}deg;--c:${c}`},
+      el("div",{class:"pola-img"},el("img",{src:spriteURL(["cherry","macaron","flower"][i],4),alt:""})))));
+  app.append(
+    el("section",{class:"hero"},
+      el("div",{class:"hero-text"},
+        el("div",{class:"pixel-label",text:"Topping cake"}),
+        el("h1",{},"무엇을 ",el("em",{text:"만들까요?"})),
+        el("p",{text:"롤링페이퍼로 마음을 모으거나, 사진을 올려 예쁜 사진첩을 만들 수 있어요."}))),
+    el("div",{class:"chooser"},
+      el("button",{class:"choice",type:"button",onclick:()=>location.hash="paper"},
+        el("span",{class:"choice-num",text:"1"}),paperArt,
+        el("h2",{text:"토핑케이크 롤링페이퍼"}),
+        el("p",{text:"내 케이크를 만들고 링크를 보내면 친구들이 토핑을 골라 편지를 써 줘요."}),
+        el("span",{class:"choice-go",text:"롤링페이퍼 만들기 →"})),
+      el("button",{class:"choice",type:"button",onclick:()=>location.hash="album"},
+        el("span",{class:"choice-num",text:"2"}),albumArt,
+        el("h2",{text:"토핑케이크 사진첩"}),
+        el("p",{text:"사진을 올리면 찍은 시간순으로 한 장에 양쪽 4장씩 자동으로 배치하고 꾸며 줘요."}),
+        el("span",{class:"choice-go",text:"사진첩 만들기 →"}))));
+}
+
+/* ===================== 사진첩 ===================== */
+const ALB={photos:[],title:"",sub:"",flavor:"strawberry",sort:"time",cover:true,nextId:1};
+const ALB_MAX=200, ALB_PX=1600;
+const SHEET={W:2153,H:1520};            // B4 가로 (364×257mm)
+
+/* --- 사진 파일에서 촬영 시간 읽기 (JPEG EXIF) --- */
+async function readExifDate(file){
+  try{
+    const buf=await file.slice(0,262144).arrayBuffer(), v=new DataView(buf);
+    if(v.byteLength<4||v.getUint16(0)!==0xFFD8) return null;
+    let p=2;
+    while(p+4<v.byteLength){
+      const mk=v.getUint16(p), len=v.getUint16(p+2);
+      if(mk===0xFFE1&&v.getUint32(p+4)===0x45786966){ return parseTiffDate(v,p+10); }
+      if((mk&0xFF00)!==0xFF00||mk===0xFFDA) break;
+      p+=2+len;
+    }
+  }catch(e){}
+  return null;
+}
+function parseTiffDate(v,t){
+  const le=v.getUint16(t)===0x4949, u16=o=>v.getUint16(t+o,le), u32=o=>v.getUint32(t+o,le);
+  const readStr=(off,n)=>{ let s=""; for(let i=0;i<n-1&&t+off+i<v.byteLength;i++){ const c=v.getUint8(t+off+i); if(!c) break; s+=String.fromCharCode(c); } return s; };
+  const ifd=off=>{ const n=u16(off), out={}; for(let i=0;i<n;i++){ const e=off+2+i*12; if(t+e+12>v.byteLength) break;
+      const tag=u16(e), cnt=u32(e+4); out[tag]={cnt,val:u32(e+8)}; } return out; };
+  const toDate=s=>{ const m=/^(\d{4}):(\d{2}):(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/.exec(s||""); if(!m||m[1]==="0000") return null;
+    const d=new Date(+m[1],+m[2]-1,+m[3],+m[4],+m[5],+m[6]); return isNaN(d)?null:d.getTime(); };
+  const i0=ifd(u32(4));
+  if(i0[0x8769]){ const ex=ifd(i0[0x8769].val);
+    for(const tag of [0x9003,0x9004]) if(ex[tag]){ const d=toDate(readStr(ex[tag].val,ex[tag].cnt)); if(d) return d; } }
+  if(i0[0x0132]){ const d=toDate(readStr(i0[0x0132].val,i0[0x0132].cnt)); if(d) return d; }
+  return null;
+}
+
+/* --- 사진 불러오기: 크기를 줄여 이 기기 메모리에만 보관 --- */
+async function loadPhotoFile(file){
+  const exif=await readExifDate(file);
+  let bmp;
+  try{ bmp=await createImageBitmap(file,{imageOrientation:"from-image"}); }
+  catch(e){ bmp=await new Promise((res,rej)=>{ const im=new Image(), u=URL.createObjectURL(file); im.onload=()=>{ URL.revokeObjectURL(u); res(im); }; im.onerror=()=>{ URL.revokeObjectURL(u); rej(e); }; im.src=u; }); }
+  const w0=bmp.width, h0=bmp.height, k=Math.min(1,ALB_PX/Math.max(w0,h0)), w=Math.round(w0*k), h=Math.round(h0*k);
+  const c=document.createElement("canvas"); c.width=w; c.height=h; c.getContext("2d").drawImage(bmp,0,0,w,h); if(bmp.close) bmp.close();
+  const blob=await new Promise(r=>c.toBlob(r,"image/jpeg",0.86));
+  const t=document.createElement("canvas"), tk=240/Math.max(w,h); t.width=Math.round(w*tk); t.height=Math.round(h*tk); t.getContext("2d").drawImage(c,0,0,t.width,t.height);
+  return {id:ALB.nextId++,name:file.name,blob,thumb:t.toDataURL("image/jpeg",0.8),w,h,time:exif||file.lastModified||Date.now(),fromExif:!!exif,caption:"",added:Date.now()};
+}
+const bmpCache=new Map();
+async function photoBitmap(p){
+  if(bmpCache.has(p.id)){ const b=bmpCache.get(p.id); bmpCache.delete(p.id); bmpCache.set(p.id,b); return b; }
+  const b=await createImageBitmap(p.blob); bmpCache.set(p.id,b);
+  while(bmpCache.size>40){ const [k,old]=bmpCache.entries().next().value; if(old.close) old.close(); bmpCache.delete(k); }
+  return b;
+}
+function albumOrder(){ const a=[...ALB.photos]; if(ALB.sort==="time") a.sort((x,y)=>x.time-y.time||x.added-y.added); return a; }
+function albumSheets(){
+  const ph=albumOrder(), sheets=[]; let i=0;
+  if(ALB.cover){ sheets.push({cover:true,right:ph.slice(0,4)}); i=4; }
+  for(;i<ph.length;i+=8) sheets.push({left:ph.slice(i,i+4),right:ph.slice(i+4,i+8)});
+  if(!sheets.length) sheets.push({cover:ALB.cover,right:[]});
+  return sheets;
+}
+const WD=["일","월","화","수","목","금","토"];
+const fmtDay=ms=>{ const d=new Date(ms); return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,"0")}.${String(d.getDate()).padStart(2,"0")} (${WD[d.getDay()]})`; };
+const fmtShort=ms=>{ const d=new Date(ms); return `${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}`; };
+
+/* --- 한 장(펼친 두 쪽) 그리기 --- */
+async function drawSheet(c,sheet,si,total,scale){
+  const W=SHEET.W, H=SHEET.H, F=FLAVORS[ALB.flavor]||FLAVORS.strawberry;
+  c.width=Math.round(W*scale); c.height=Math.round(H*scale);
+  const x=c.getContext("2d"); x.setTransform(scale,0,0,scale,0,0);
+  paper(x,W,H);
+  // 가운데 접힌 자국
+  const g=x.createLinearGradient(W/2-60,0,W/2+60,0); g.addColorStop(0,"rgba(74,54,64,0)"); g.addColorStop(.5,"rgba(74,54,64,.10)"); g.addColorStop(1,"rgba(74,54,64,0)");
+  x.fillStyle=g; x.fillRect(W/2-60,0,120,H);
+  x.strokeStyle="rgba(74,54,64,.18)"; x.setLineDash([10,10]); x.beginPath(); x.moveTo(W/2,30); x.lineTo(W/2,H-30); x.stroke(); x.setLineDash([]);
+  // 위아래 케이크 크림 띠
+  drawCreamBand(x,0,0,W,F,false); drawCreamBand(x,0,H,W,F,true);
+  const half=W/2;
+  if(sheet.cover) await drawCover(x,0,half,H,F); else await drawPage(x,0,half,H,sheet.left,si*2+(ALB.cover?0:1),F,"left");
+  await drawPage(x,half,half,H,sheet.right,si*2+(ALB.cover?1:2),F,"right");
+  return c;
+}
+function drawCreamBand(x,X,Y,W,F,bottom){
+  const D=8, h=46;
+  x.save(); x.imageSmoothingEnabled=false;
+  for(let i=0;i<W;i+=D){ const k=Math.floor(i/D);
+    const drip=[2,4,3,6,2,3,5,2,4,7,3,2][k%12]*D;
+    x.fillStyle=F.top; if(bottom){ x.fillRect(X+i,Y-h,D,h); } else { x.fillRect(X+i,Y,D,h+(k%3?0:drip)); }
+    x.fillStyle=F.topLo; if(bottom){ x.fillRect(X+i,Y-h,D,D); } else { x.fillRect(X+i,Y+h+(k%3?0:drip)-D,D,D); }
+  }
+  // 스프링클
+  const cols=["#ff7a9a","#7ccf6e","#ffd84d","#7d8ef0","#ffffff"];
+  for(let i=24;i<W;i+=58){ x.fillStyle=cols[(i/58|0)%cols.length]; x.fillRect(X+i,bottom?Y-30:Y+16,D*1.5,D); }
+  x.restore();
+}
+function drawSprite(x,id,cx,cy,sc){ const s=SPR[id]; if(!s) return; x.save(); x.imageSmoothingEnabled=false;
+  s.px.forEach(([px,py,col])=>{ x.fillStyle="rgba(74,54,64,.18)"; x.fillRect(cx-s.w*sc/2+px*sc+sc,cy-s.h*sc/2+py*sc+sc,sc,sc); });
+  s.px.forEach(([px,py,col])=>{ x.fillStyle=`rgb(${col})`; x.fillRect(cx-s.w*sc/2+px*sc,cy-s.h*sc/2+py*sc,sc,sc); }); x.restore(); }
+async function drawCover(x,X,w,H,F){
+  const ph=albumOrder(), cx=X+w/2;
+  x.textAlign="center"; x.textBaseline="alphabetic";
+  x.fillStyle="#b08a9a"; x.font='24px Silkscreen, monospace'; x.fillText("TOPPING CAKE PHOTO ALBUM",cx,230);
+  x.fillStyle="#4a3640"; x.font=`96px ${FT}`; fitText(x,ALB.title||"우리의 사진첩",cx,350,w-200);
+  if(ALB.sub){ x.fillStyle="#9a7f8c"; x.font=`46px ${FT}`; fitText(x,ALB.sub,cx,420,w-220); }
+  const cake=document.createElement("canvas");
+  paintCake(cake,ALB.flavor,[{sprite:"candle",x:66,y:44},{sprite:"strawberry",x:80,y:50},{sprite:"candle",x:94,y:44},{sprite:"heart",x:55,y:58},{sprite:"star",x:106,y:57}]);
+  x.imageSmoothingEnabled=false; x.drawImage(cake,cx-400,460,800,600);
+  x.fillStyle="#4a3640"; x.font=`bold 32px ${FB}`;
+  const range=ph.length?(fmtShort(ph.reduce((a,p)=>Math.min(a,p.time),Infinity))+" – "+fmtShort(ph.reduce((a,p)=>Math.max(a,p.time),0))):"";
+  x.fillText(ph.length?`사진 ${ph.length}장`:"사진을 올려 주세요",cx,1130);
+  if(range){ x.fillStyle="#9a7f8c"; x.font=`28px ${FB}`; x.fillText(range,cx,1180); }
+  ["cherry","macaron","flower","cookie"].forEach((id,i)=>drawSprite(x,id,X+[150,w-150,170,w-170][i],[170,170,1300,1300][i],7));
+}
+function fitText(x,t,cx,y,maxW){ let s=t; while(s.length>1&&x.measureText(s).width>maxW) s=s.slice(0,-1); if(s!==t) s=s.slice(0,-1)+"…"; x.fillText(s,cx,y); }
+async function drawPage(x,X,w,H,photos,pageNo,F,side){
+  const M=86, top=150, bottom=H-150, gap=46;
+  const sw=(w-2*M-gap)/2, sh=(bottom-top-gap)/2;
+  const tapes=[NOTES[1].c,NOTES[2].c,NOTES[3].c,NOTES[4].c,NOTES[0].c];
+  const stickers=["strawberry","cherry","heart","star","macaron","cookie","blueberry","flower","gummy","choco","cream","candle"];
+  // 쪽 머리말: 이 쪽 사진들의 날짜
+  x.textBaseline="alphabetic";
+  if(photos.length){ const a=photos[0].time, b=photos[photos.length-1].time;
+    x.fillStyle="#9a7f8c"; x.font=`34px ${FT}`; x.textAlign=side==="left"?"left":"right";
+    x.fillText(fmtShort(a)===fmtShort(b)?fmtShort(a):`${fmtShort(a)} – ${fmtShort(b)}`,side==="left"?X+M:X+w-M,top-40); }
+  for(let i=0;i<4;i++){
+    const p=photos[i], col=i%2, row=i/2|0, sx=X+M+col*(sw+gap), sy=top+row*(sh+gap);
+    const rot=((pageNo*7+i*13)%5-2)*0.012;
+    x.save(); x.translate(sx+sw/2,sy+sh/2); x.rotate(rot);
+    const fw=sw, fh=sh, pad=22, capH=88, iw=fw-pad*2, ih=fh-pad-capH;
+    if(!p){ // 빈 자리: 점선 틀
+      x.setLineDash([14,12]); x.strokeStyle="rgba(74,54,64,.22)"; x.lineWidth=3; rr(x,-fw/2,-fh/2,fw,fh,14); x.stroke(); x.setLineDash([]);
+      x.restore(); continue; }
+    // 폴라로이드 틀
+    rr(x,-fw/2+7,-fh/2+9,fw,fh,10); x.fillStyle="rgba(74,54,64,.16)"; x.fill();
+    rr(x,-fw/2,-fh/2,fw,fh,10); x.fillStyle="#ffffff"; x.fill(); x.lineWidth=3; x.strokeStyle="#4a3640"; x.stroke();
+    // 사진 (가운데를 기준으로 꽉 채워 자르기)
+    try{ const b=await photoBitmap(p); const k=Math.max(iw/b.width,ih/b.height), dw=b.width*k, dh=b.height*k;
+      x.save(); x.beginPath(); x.rect(-fw/2+pad,-fh/2+pad,iw,ih); x.clip();
+      x.imageSmoothingEnabled=true; x.imageSmoothingQuality="high"; x.drawImage(b,-fw/2+pad+(iw-dw)/2,-fh/2+pad+(ih-dh)/2,dw,dh); x.restore();
+      x.strokeStyle="rgba(74,54,64,.25)"; x.lineWidth=2; x.strokeRect(-fw/2+pad,-fh/2+pad,iw,ih);
+    }catch(e){}
+    // 글씨: 설명이 있으면 설명 + 작은 날짜, 없으면 날짜
+    x.textAlign="center"; x.fillStyle="#4a3640";
+    const cy=fh/2-capH/2;
+    if(p.caption){ x.font=`bold 30px ${FB}`; fitText(x,p.caption,0,cy+4,iw-20); x.fillStyle="#9a7f8c"; x.font=`20px ${FB}`; x.fillText(fmtDay(p.time),0,cy+34); }
+    else { x.font=`bold 28px ${FB}`; x.fillText(fmtDay(p.time),0,cy+12); }
+    // 마스킹테이프
+    x.save(); x.rotate((i%2?1:-1)*0.09); x.globalAlpha=.82; x.fillStyle=tapes[(pageNo+i)%tapes.length];
+    x.fillRect(-70,-fh/2-22,140,44); x.globalAlpha=.35; x.fillStyle="#ffffff";
+    for(let k=-70;k<70;k+=18) x.fillRect(k,-fh/2-22,8,44); x.restore();
+    x.restore();
+    // 토핑 스티커 (사진 모서리에 번갈아)
+    if((pageNo+i)%3!==1){ const corner=(pageNo+i)%4;
+      drawSprite(x,stickers[(pageNo*4+i)%stickers.length],sx+(corner%2?sw-18:18),sy+(corner<2?sh-30:30),6); }
+  }
+  // 쪽 번호
+  x.textAlign="center"; x.fillStyle="#b08a9a"; x.font='22px Silkscreen, monospace';
+  x.fillText(`- ${pageNo} -`,X+w/2,H-88);
+}
+
+/* --- 사진첩 화면 --- */
+let albRenderT=0, albRendering=0;
+function renderAlbum(){
+  const app=$("#app"); app.replaceChildren();
+  const fileIn=el("input",{type:"file",accept:"image/*",multiple:true,hidden:true,id:"albfile"});
+  const titleIn=el("input",{id:"albtitle",maxlength:"24",placeholder:"예: 2학년 8반 1년의 기록",value:ALB.title,autocomplete:"off"});
+  const subIn=el("input",{id:"albsub",maxlength:"30",placeholder:"예: 2026 신원고 · 우리가 함께한 순간들",value:ALB.sub,autocomplete:"off"});
+  titleIn.addEventListener("input",()=>{ ALB.title=titleIn.value.trim(); schedule(); });
+  subIn.addEventListener("input",()=>{ ALB.sub=subIn.value.trim(); schedule(); });
+  const fl=Object.entries(FLAVORS).map(([id,f])=>{ const b=el("button",{type:"button",class:"flavor sm","aria-pressed":String(id===ALB.flavor),
+      onclick:()=>{ ALB.flavor=id; fl.forEach(z=>z.setAttribute("aria-pressed",String(z.dataset.id===id))); schedule(); }},
+      el("img",{src:cakeURL(id),alt:""}),el("span",{text:f.ko})); b.dataset.id=id; return b; });
+  const sortSel=el("div",{class:"seg"},
+    ...[["time","찍은 시간순"],["manual","올린 순서·직접 정렬"]].map(([v,t])=>{ const b=el("button",{type:"button","aria-pressed":String(ALB.sort===v),onclick:()=>{ ALB.sort=v; sortSel.querySelectorAll("button").forEach(z=>z.setAttribute("aria-pressed",String(z===b))); renderList(); schedule(); }},t); return b; }));
+  const coverCb=el("input",{type:"checkbox",id:"albcover",checked:ALB.cover}); coverCb.addEventListener("change",()=>{ ALB.cover=coverCb.checked; schedule(); });
+  const drop=el("div",{class:"drop",role:"button",tabindex:"0",onclick:()=>fileIn.click(),onkeydown:e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); fileIn.click(); } }},
+    el("div",{class:"drop-icons"},["strawberry","cherry","heart"].map(id=>el("img",{src:spriteURL(id,4),alt:""}))),
+    el("b",{text:"사진 올리기"}),el("span",{class:"hint",text:"여러 장을 한꺼번에 골라도 돼요 · 여기로 끌어다 놓아도 돼요"}));
+  ["dragover","dragenter"].forEach(ev=>drop.addEventListener(ev,e=>{ e.preventDefault(); drop.classList.add("on"); }));
+  ["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{ e.preventDefault(); drop.classList.remove("on"); }));
+  drop.addEventListener("drop",e=>addFiles(e.dataTransfer.files));
+  fileIn.addEventListener("change",()=>{ addFiles(fileIn.files); fileIn.value=""; });
+  const status=el("div",{class:"hint alb-status"});
+  const list=el("div",{class:"alb-list"});
+  const preview=el("div",{class:"alb-preview"});
+  const printBtn=el("button",{class:"btn primary",type:"button",onclick:()=>albumExport("print")},"🖨 B4로 출력하기");
+  const pdfBtn=el("button",{class:"btn",type:"button",onclick:()=>albumExport("pdf")},"B4 PDF 저장");
+  const clearBtn=el("button",{class:"linkish",type:"button",text:"사진 모두 빼기",onclick:()=>confirmInline(clearBtn,"올린 사진을 모두 뺄까요?",()=>{ ALB.photos=[]; bmpCache.forEach(b=>b.close&&b.close()); bmpCache.clear(); renderList(); schedule(); })});
+  ALB.ui={list,preview,status,btns:[printBtn,pdfBtn]};
+
+  app.append(
+    el("div",{class:"topbar"},el("button",{class:"btn small ghost",type:"button",onclick:()=>location.hash=""},"← 처음으로"),el("span",{class:"pixel-label",text:"photo album"})),
+    el("div",{class:"cake-head"},el("div",{class:"pixel-label",text:"Topping cake photo album"}),el("h1",{text:"토핑케이크 사진첩"}),
+      el("div",{class:"sub",text:"사진을 올리면 찍은 시간순으로 한 장에 양쪽 4장씩 배치해 줘요"})),
+    el("section",{class:"panel create"},
+      drop,fileIn,status,
+      el("div",{class:"field"},el("label",{for:"albtitle",text:"사진첩 제목"}),titleIn),
+      el("div",{class:"field"},el("label",{for:"albsub",text:"한 줄 소개 (선택)"}),subIn),
+      el("div",{class:"field"},el("label",{text:"꾸밈 색"}),el("div",{class:"flavors"},fl)),
+      el("div",{class:"field"},el("label",{text:"배열 순서"}),sortSel,
+        el("label",{class:"check"},coverCb,el("span",{text:" 첫 장 왼쪽에 표지 넣기"}))),
+      el("p",{class:"hint",style:"margin:0",text:"🔒 사진은 서버에 올라가지 않고 이 기기 안에서만 처리돼요. 페이지를 새로고침하거나 닫으면 사라지니, 다 만들면 PDF로 저장해 두세요."})),
+    el("div",{class:"list-head"},el("h2",{text:"올린 사진"}),clearBtn),
+    list,
+    el("div",{class:"list-head"},el("h2",{text:"미리보기"}),el("span",{class:"hint",text:"B4 가로 한 장 = 펼친 두 쪽"})),
+    preview,
+    el("div",{class:"actions"},printBtn,pdfBtn));
+  renderList(); schedule(0);
+
+  async function addFiles(files){
+    const arr=[...files].filter(f=>/^image\//.test(f.type)||/\.(jpe?g|png|webp|gif|heic|heif)$/i.test(f.name));
+    if(!arr.length){ toast("사진 파일을 골라 주세요"); return; }
+    const room=ALB_MAX-ALB.photos.length; if(room<=0){ toast(`사진은 ${ALB_MAX}장까지 넣을 수 있어요`); return; }
+    let ok=0, bad=0, noTime=0; const take=arr.slice(0,room);
+    for(let i=0;i<take.length;i++){ status.textContent=`사진 불러오는 중… ${i+1} / ${take.length}`;
+      try{ const p=await loadPhotoFile(take[i]); ALB.photos.push(p); ok++; if(!p.fromExif) noTime++; }catch(e){ bad++; } }
+    status.textContent="";
+    let msg=`사진 ${ok}장을 넣었어요`;
+    if(bad) msg+=` · ${bad}장은 열 수 없는 형식이에요`;
+    toast(msg);
+    status.textContent=[bad?`열 수 없었던 사진 ${bad}장: 아이폰 HEIC 사진이면 '설정 → 카메라 → 포맷 → 높은 호환성'으로 바꾸거나 JPG로 바꿔 올려 주세요.`:"",
+      noTime?`찍은 시간 정보가 없는 사진 ${noTime}장은 파일 날짜로 정렬했어요. (캡처·메신저로 받은 사진은 시간 정보가 지워져 있을 수 있어요)`:""].filter(Boolean).join(" ");
+    if(arr.length>room) toast(`사진은 ${ALB_MAX}장까지 넣을 수 있어 ${arr.length-room}장은 빠졌어요`);
+    renderList(); schedule(0);
+  }
+  function renderList(){
+    const ph=albumOrder();
+    list.replaceChildren(...(ph.length?ph.map((p,idx)=>{
+      const cap=el("input",{class:"alb-cap",maxlength:"20",placeholder:"설명 (선택)",value:p.caption,"aria-label":"사진 설명"});
+      cap.addEventListener("input",()=>{ p.caption=cap.value.trim(); schedule(); });
+      const move=d=>{ const a=ALB.photos, i=a.indexOf(p), j=i+d; if(j<0||j>=a.length) return; [a[i],a[j]]=[a[j],a[i]]; renderList(); schedule(); };
+      return el("div",{class:"alb-item"},
+        el("div",{class:"alb-thumb"},el("img",{src:p.thumb,alt:p.name}),el("span",{class:"alb-no",text:String(idx+1)})),
+        el("div",{class:"alb-meta"},el("span",{class:"alb-date"+(p.fromExif?"":" guess"),text:fmtDay(p.time)+(p.fromExif?"":" · 파일 날짜")}),cap,
+          el("div",{class:"alb-tools"},
+            ALB.sort==="manual"?el("button",{class:"btn small ghost",type:"button","aria-label":"앞으로",onclick:()=>move(-1)},"◀"):null,
+            ALB.sort==="manual"?el("button",{class:"btn small ghost",type:"button","aria-label":"뒤로",onclick:()=>move(1)},"▶"):null,
+            el("button",{class:"btn small ghost",type:"button","aria-label":"빼기",onclick:()=>{ ALB.photos=ALB.photos.filter(z=>z!==p); const b=bmpCache.get(p.id); if(b&&b.close) b.close(); bmpCache.delete(p.id); renderList(); schedule(); }},"✕"))));
+    }):[el("div",{class:"empty",text:"아직 사진이 없어요. 위의 '사진 올리기'를 눌러 주세요."})]));
+    ALB.ui.btns.forEach(b=>b.disabled=!ph.length);
+  }
+  function schedule(ms=300){ clearTimeout(albRenderT); albRenderT=setTimeout(drawPreview,ms); }
+  async function drawPreview(){
+    const job=++albRendering, sheets=albumSheets();
+    const wpx=Math.min(preview.clientWidth||700,1000), scale=Math.min(1,wpx*(window.devicePixelRatio||1)/SHEET.W);
+    const cs=[];
+    for(let i=0;i<sheets.length;i++){ if(job!==albRendering) return;
+      const c=el("canvas",{class:"alb-sheet",role:"img","aria-label":`사진첩 ${i+1}장`});
+      await drawSheet(c,sheets[i],i,sheets.length,scale); cs.push(el("figure",{class:"alb-fig"},c,el("figcaption",{class:"hint",text:`${i+1}장 / ${sheets.length}장`}))); }
+    if(job===albRendering) preview.replaceChildren(...cs);
+  }
+}
+async function albumExport(kind){
+  if(!ALB.photos.length) return;
+  const btns=ALB.ui.btns; btns.forEach(b=>b.disabled=true); toast(kind==="print"?"출력할 종이를 준비하는 중이에요":"PDF를 만드는 중이에요");
+  try{
+    await Promise.all([`96px ${FT}`,`bold 28px ${FB}`,"22px Silkscreen"].map(f=>document.fonts.load(f,"가나다Aa").catch(()=>{})));
+    const sheets=albumSheets(), urls=[];
+    for(let i=0;i<sheets.length;i++){ const c=document.createElement("canvas"); await drawSheet(c,sheets[i],i,sheets.length,1); urls.push(c.toDataURL("image/jpeg",0.92)); }
+    const name=((ALB.title||"사진첩")+"_B4").replace(/[\\/:*?"<>|]/g,"");
+    if(kind==="pdf"){
+      if(!window.jspdf){ toast("PDF 도구를 불러오지 못했어요"); return; }
+      const pdf=new window.jspdf.jsPDF({unit:"mm",format:[257,364],orientation:"landscape"});
+      urls.forEach((u,i)=>{ if(i) pdf.addPage([257,364],"landscape"); pdf.addImage(u,"JPEG",0,0,364,257); });
+      saveBlob(pdf.output("blob"),name+".pdf"); toast("저장했어요");
+    } else {
+      let root=$("#print-root"); if(root) root.remove();
+      root=el("div",{id:"print-root"}); document.body.append(root);
+      const pg=el("style",{id:"print-page"}); pg.textContent="@page{size:364mm 257mm;margin:0}"; document.head.append(pg);
+      await Promise.all(urls.map(u=>new Promise(res=>{ const im=new Image(); im.onload=res; im.onerror=res; im.src=u; im.alt=""; root.append(el("div",{class:"pp"},im)); })));
+      setTimeout(()=>window.print(),60);
+    }
+  }catch(e){ toast("만들지 못했어요. 다시 시도해 주세요"); }
+  finally{ btns.forEach(b=>b.disabled=false); }
+}
+window.addEventListener("afterprint",()=>{ const s=$("#print-page"); if(s) s.remove(); });
 
 route();
 </script>
