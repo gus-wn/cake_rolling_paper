@@ -225,7 +225,7 @@ button,input,textarea{font:inherit;color:inherit}
 .alb-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
 .alb-item{background:var(--panel);border:2px solid var(--line);border-radius:12px;padding:8px;display:flex;flex-direction:column;gap:6px;min-width:0}
 .alb-thumb{position:relative;aspect-ratio:4/3;border-radius:8px;overflow:hidden;background:var(--soft);max-width:100%}
-.alb-thumb img{width:100%;height:100%;object-fit:cover}
+.alb-thumb img{width:100%;height:100%;object-fit:contain}
 .alb-no{position:absolute;top:4px;left:4px;background:rgba(74,54,64,.75);color:#fff;font-size:11px;font-weight:800;border-radius:999px;padding:1px 7px}
 .alb-meta{display:flex;flex-direction:column;gap:5px;min-width:0}
 .alb-date{font-size:12px;font-weight:700}
@@ -900,7 +900,7 @@ function renderChooser(){
       el("button",{class:"choice",type:"button",onclick:()=>location.hash="album"},
         el("span",{class:"choice-num",text:"2"}),albumArt,
         el("h2",{text:"토핑케이크 사진첩"}),
-        el("p",{text:"사진을 올리면 찍은 시간순으로 한 장에 양쪽 4장씩 자동으로 배치하고 꾸며 줘요."}),
+        el("p",{text:"사진을 올리면 찍은 시간순으로, 사진 모양에 맞춰 한 쪽에 2~4장씩 자르지 않고 배치하고 꾸며 줘요."}),
         el("span",{class:"choice-go",text:"사진첩 만들기 →"}))));
 }
 
@@ -958,17 +958,43 @@ async function photoBitmap(p){
   return b;
 }
 function albumOrder(){ const a=[...ALB.photos]; if(ALB.sort==="time") a.sort((x,y)=>x.time-y.time||x.added-y.added); return a; }
-function albumSheets(){
-  const ph=albumOrder(), sheets=[]; let i=0;
-  if(ALB.cover){ sheets.push({cover:true,right:ph.slice(0,4)}); i=4; }
-  for(;i<ph.length;i+=8) sheets.push({left:ph.slice(i,i+4),right:ph.slice(i+4,i+8)});
-  if(!sheets.length) sheets.push({cover:ALB.cover,right:[]});
-  return sheets;
-}
 const WD=["일","월","화","수","목","금","토"];
 const fmtDay=ms=>{ const d=new Date(ms); return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,"0")}.${String(d.getDate()).padStart(2,"0")} (${WD[d.getDay()]})`; };
 const fmtShort=ms=>{ const d=new Date(ms); return `${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}`; };
 
+/* --- 쪽 배치: 사진을 자르지 않고, 사진 모양에 맞춰 한 쪽에 4장(2×2) 또는 2장(위아래·좌우)을 골라요 --- */
+const PG={W:SHEET.W/2,H:SHEET.H,M:86,top:150,bottom:SHEET.H-150,gap:46,pad:22,capH:88};
+function pageSlots(layout,X=0){
+  const {W,M,top,bottom,gap}=PG, iw=W-2*M, ih=bottom-top;
+  if(layout==="grid4"){ const sw=(iw-gap)/2, sh=(ih-gap)/2; return [0,1,2,3].map(i=>({x:X+M+(i%2)*(sw+gap),y:top+(i/2|0)*(sh+gap),w:sw,h:sh})); }
+  if(layout==="stack2"){ const sh=(ih-gap)/2; return [0,1].map(i=>({x:X+M,y:top+i*(sh+gap),w:iw,h:sh})); }
+  if(layout==="side2"){ const sw=(iw-gap)/2; return [0,1].map(i=>({x:X+M+i*(sw+gap),y:top,w:sw,h:ih})); }
+  return [{x:X+M,y:top,w:iw,h:ih}];
+}
+// 틀 안에 사진을 원본 비율 그대로(자르지 않고) 넣었을 때의 크기
+function fitPhoto(p,s){ const aw=s.w-PG.pad*2, ah=s.h-PG.pad-PG.capH; const k=Math.min(aw/p.w,ah/p.h); return {w:p.w*k,h:p.h*k}; }
+function layoutFill(layout,photos){ const sl=pageSlots(layout); let a=0; photos.forEach((p,i)=>{ if(sl[i]){ const f=fitPhoto(p,sl[i]); a+=f.w*f.h; } });
+  return a/((PG.W-2*PG.M)*(PG.bottom-PG.top)); }
+function albumPages(){
+  const ph=albumOrder(), pages=[]; let i=0;
+  while(i<ph.length){
+    const rest=ph.slice(i), cands=[];
+    if(rest.length>=3) cands.push({layout:"grid4",photos:rest.slice(0,4),bonus:rest.length>=4?1.12:0.95});
+    if(rest.length>=2){ cands.push({layout:"stack2",photos:rest.slice(0,2),bonus:1}); cands.push({layout:"side2",photos:rest.slice(0,2),bonus:1}); }
+    cands.push({layout:"one",photos:rest.slice(0,1),bonus:rest.length===1?1:0.7});
+    cands.forEach(c=>c.score=layoutFill(c.layout,c.photos)*c.bonus);
+    const best=cands.sort((a,b)=>b.score-a.score)[0];
+    pages.push({layout:best.layout,photos:best.photos}); i+=best.photos.length;
+  }
+  return pages;
+}
+function albumSheets(){
+  const pages=albumPages(), sheets=[]; let i=0;
+  if(ALB.cover){ sheets.push({cover:true,right:pages[0]||null}); i=1; }
+  for(;i<pages.length;i+=2) sheets.push({left:pages[i],right:pages[i+1]||null});
+  if(!sheets.length) sheets.push({cover:ALB.cover,right:null});
+  return sheets;
+}
 /* --- 한 장(펼친 두 쪽) 그리기 --- */
 async function drawSheet(c,sheet,si,total,scale){
   const W=SHEET.W, H=SHEET.H, F=FLAVORS[ALB.flavor]||FLAVORS.strawberry;
@@ -1018,48 +1044,41 @@ async function drawCover(x,X,w,H,F){
   ["cherry","macaron","flower","cookie"].forEach((id,i)=>drawSprite(x,id,X+[150,w-150,170,w-170][i],[170,170,1300,1300][i],7));
 }
 function fitText(x,t,cx,y,maxW){ let s=t; while(s.length>1&&x.measureText(s).width>maxW) s=s.slice(0,-1); if(s!==t) s=s.slice(0,-1)+"…"; x.fillText(s,cx,y); }
-async function drawPage(x,X,w,H,photos,pageNo,F,side){
-  const M=86, top=150, bottom=H-150, gap=46;
-  const sw=(w-2*M-gap)/2, sh=(bottom-top-gap)/2;
+async function drawPage(x,X,w,H,page,pageNo,F,side){
   const tapes=[NOTES[1].c,NOTES[2].c,NOTES[3].c,NOTES[4].c,NOTES[0].c];
   const stickers=["strawberry","cherry","heart","star","macaron","cookie","blueberry","flower","gummy","choco","cream","candle"];
-  // 쪽 머리말: 이 쪽 사진들의 날짜
+  if(!page||!page.photos.length){ // 빈 쪽: 가운데에 토핑 하나
+    drawSprite(x,stickers[pageNo%stickers.length],X+w/2,H/2,9); return; }
+  const photos=page.photos, slots=pageSlots(page.layout,X), {pad,capH}=PG;
   x.textBaseline="alphabetic";
-  if(photos.length){ const a=photos[0].time, b=photos[photos.length-1].time;
+  { const a=photos[0].time, b=photos[photos.length-1].time;
     x.fillStyle="#9a7f8c"; x.font=`34px ${FT}`; x.textAlign=side==="left"?"left":"right";
-    x.fillText(fmtShort(a)===fmtShort(b)?fmtShort(a):`${fmtShort(a)} – ${fmtShort(b)}`,side==="left"?X+M:X+w-M,top-40); }
-  for(let i=0;i<4;i++){
-    const p=photos[i], col=i%2, row=i/2|0, sx=X+M+col*(sw+gap), sy=top+row*(sh+gap);
+    x.fillText(fmtShort(a)===fmtShort(b)?fmtShort(a):`${fmtShort(a)} – ${fmtShort(b)}`,side==="left"?X+PG.M:X+w-PG.M,PG.top-40); }
+  for(let i=0;i<slots.length;i++){
+    const p=photos[i], s=slots[i];
+    if(!p) continue;
+    const f=fitPhoto(p,s), fw=f.w+pad*2, fh=f.h+pad+capH;      // 틀을 사진 모양에 딱 맞춰요
     const rot=((pageNo*7+i*13)%5-2)*0.012;
-    x.save(); x.translate(sx+sw/2,sy+sh/2); x.rotate(rot);
-    const fw=sw, fh=sh, pad=22, capH=88, iw=fw-pad*2, ih=fh-pad-capH;
-    if(!p){ // 빈 자리: 점선 틀
-      x.setLineDash([14,12]); x.strokeStyle="rgba(74,54,64,.22)"; x.lineWidth=3; rr(x,-fw/2,-fh/2,fw,fh,14); x.stroke(); x.setLineDash([]);
-      x.restore(); continue; }
-    // 폴라로이드 틀
+    x.save(); x.translate(s.x+s.w/2,s.y+s.h/2); x.rotate(rot);
     rr(x,-fw/2+7,-fh/2+9,fw,fh,10); x.fillStyle="rgba(74,54,64,.16)"; x.fill();
     rr(x,-fw/2,-fh/2,fw,fh,10); x.fillStyle="#ffffff"; x.fill(); x.lineWidth=3; x.strokeStyle="#4a3640"; x.stroke();
-    // 사진 (가운데를 기준으로 꽉 채워 자르기)
-    try{ const b=await photoBitmap(p); const k=Math.max(iw/b.width,ih/b.height), dw=b.width*k, dh=b.height*k;
-      x.save(); x.beginPath(); x.rect(-fw/2+pad,-fh/2+pad,iw,ih); x.clip();
-      x.imageSmoothingEnabled=true; x.imageSmoothingQuality="high"; x.drawImage(b,-fw/2+pad+(iw-dw)/2,-fh/2+pad+(ih-dh)/2,dw,dh); x.restore();
-      x.strokeStyle="rgba(74,54,64,.25)"; x.lineWidth=2; x.strokeRect(-fw/2+pad,-fh/2+pad,iw,ih);
+    // 사진: 원본 비율 그대로, 자르지 않아요
+    try{ const b=await photoBitmap(p);
+      x.imageSmoothingEnabled=true; x.imageSmoothingQuality="high"; x.drawImage(b,-fw/2+pad,-fh/2+pad,f.w,f.h);
+      x.strokeStyle="rgba(74,54,64,.25)"; x.lineWidth=2; x.strokeRect(-fw/2+pad,-fh/2+pad,f.w,f.h);
     }catch(e){}
-    // 글씨: 설명이 있으면 설명 + 작은 날짜, 없으면 날짜
     x.textAlign="center"; x.fillStyle="#4a3640";
-    const cy=fh/2-capH/2;
-    if(p.caption){ x.font=`bold 30px ${FB}`; fitText(x,p.caption,0,cy+4,iw-20); x.fillStyle="#9a7f8c"; x.font=`20px ${FB}`; x.fillText(fmtDay(p.time),0,cy+34); }
+    const cy=fh/2-capH/2, tw=Math.max(f.w-20,160);
+    if(p.caption){ x.font=`bold 30px ${FB}`; fitText(x,p.caption,0,cy+4,tw); x.fillStyle="#9a7f8c"; x.font=`20px ${FB}`; x.fillText(fmtDay(p.time),0,cy+34); }
     else { x.font=`bold 28px ${FB}`; x.fillText(fmtDay(p.time),0,cy+12); }
-    // 마스킹테이프
     x.save(); x.rotate((i%2?1:-1)*0.09); x.globalAlpha=.82; x.fillStyle=tapes[(pageNo+i)%tapes.length];
     x.fillRect(-70,-fh/2-22,140,44); x.globalAlpha=.35; x.fillStyle="#ffffff";
     for(let k=-70;k<70;k+=18) x.fillRect(k,-fh/2-22,8,44); x.restore();
+    // 토핑 스티커: 틀 모서리에
+    if((pageNo+i)%3!==1){ const c=(pageNo+i)%4;
+      drawSprite(x,stickers[(pageNo*4+i)%stickers.length],(c%2?fw/2-6:-fw/2+6),(c<2?fh/2-14:-fh/2+14),6); }
     x.restore();
-    // 토핑 스티커 (사진 모서리에 번갈아)
-    if((pageNo+i)%3!==1){ const corner=(pageNo+i)%4;
-      drawSprite(x,stickers[(pageNo*4+i)%stickers.length],sx+(corner%2?sw-18:18),sy+(corner<2?sh-30:30),6); }
   }
-  // 쪽 번호
   x.textAlign="center"; x.fillStyle="#b08a9a"; x.font='22px Silkscreen, monospace';
   x.fillText(`- ${pageNo} -`,X+w/2,H-88);
 }
@@ -1097,7 +1116,7 @@ function renderAlbum(){
   app.append(
     el("div",{class:"topbar"},el("button",{class:"btn small ghost",type:"button",onclick:()=>location.hash=""},"← 처음으로"),el("span",{class:"pixel-label",text:"photo album"})),
     el("div",{class:"cake-head"},el("div",{class:"pixel-label",text:"Topping cake photo album"}),el("h1",{text:"토핑케이크 사진첩"}),
-      el("div",{class:"sub",text:"사진을 올리면 찍은 시간순으로 한 장에 양쪽 4장씩 배치해 줘요"})),
+      el("div",{class:"sub",text:"찍은 시간순으로, 사진을 자르지 않고 한 쪽에 2~4장씩 배치해 줘요"})),
     el("section",{class:"panel create"},
       drop,fileIn,status,
       el("div",{class:"field"},el("label",{for:"albtitle",text:"사진첩 제목"}),titleIn),
@@ -1108,7 +1127,7 @@ function renderAlbum(){
       el("p",{class:"hint",style:"margin:0",text:"🔒 사진은 서버에 올라가지 않고 이 기기 안에서만 처리돼요. 페이지를 새로고침하거나 닫으면 사라지니, 다 만들면 PDF로 저장해 두세요."})),
     el("div",{class:"list-head"},el("h2",{text:"올린 사진"}),clearBtn),
     list,
-    el("div",{class:"list-head"},el("h2",{text:"미리보기"}),el("span",{class:"hint",text:"B4 가로 한 장 = 펼친 두 쪽"})),
+    el("div",{class:"list-head"},el("h2",{text:"미리보기"}),el("span",{class:"hint",text:"B4 가로 한 장 = 펼친 두 쪽 · 사진 모양에 맞춰 한 쪽에 2~4장"})),
     preview,
     el("div",{class:"actions"},printBtn,pdfBtn));
   renderList(); schedule(0);
