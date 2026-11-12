@@ -235,6 +235,12 @@ button,input,textarea{font:inherit;color:inherit}
 .alb-cap{border:1.5px solid var(--line);border-radius:7px;background:var(--bg);padding:5px 8px;font-size:13px;width:100%;min-width:0}
 .alb-tools{display:flex;gap:4px;justify-content:flex-end}
 .alb-tools .btn{padding:3px 9px;font-size:12px}
+.alb-loading{display:grid;place-items:center;width:100%;height:100%;font-size:12px;color:var(--muted)}
+.alb-badge{position:absolute;bottom:4px;right:4px;background:var(--accent);color:var(--accent-ink);font-size:11px;font-weight:800;border-radius:999px;padding:1px 7px}
+.alb-badge.mine{background:var(--mint);color:#173b2c}
+.alb-item.up{opacity:.65}
+.print-help{display:flex;flex-direction:column;gap:8px}
+.print-help ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:14px}
 .alb-preview{display:flex;flex-direction:column;gap:18px;width:100%}
 .alb-fig{margin:0;display:flex;flex-direction:column;align-items:center;gap:6px}
 .alb-sheet{width:100%;height:auto;max-width:1000px;border:2px solid var(--ink);border-radius:6px;box-shadow:4px 4px 0 var(--line);background:#fffbfc}
@@ -412,7 +418,9 @@ function route(){
   const m=h.match(/^cake-([a-z0-9]{4,12})$/);
   if(m) renderCake(m[1]);
   else if(h==="paper") renderHome();
-  else if(h==="album") renderAlbum();
+  else if(h==="album") renderAlbumStart();
+  else if(h==="album-local") renderAlbum(null);
+  else if(/^album-[a-z0-9]{4,12}$/.test(h)) renderAlbum(h.slice(6));
   else renderChooser();
   window.scrollTo(0,0);
 }
@@ -950,7 +958,7 @@ async function loadPhotoFile(file){
   const c=document.createElement("canvas"); c.width=w; c.height=h; c.getContext("2d").drawImage(bmp,0,0,w,h); if(bmp.close) bmp.close();
   const blob=await new Promise(r=>c.toBlob(r,"image/jpeg",0.86));
   const t=document.createElement("canvas"), tk=240/Math.max(w,h); t.width=Math.round(w*tk); t.height=Math.round(h*tk); t.getContext("2d").drawImage(c,0,0,t.width,t.height);
-  return {id:ALB.nextId++,name:file.name,blob,thumb:t.toDataURL("image/jpeg",0.8),w,h,time:exif||file.lastModified||Date.now(),fromExif:!!exif,caption:"",added:Date.now()};
+  return {id:ALB.nextId++,name:file.name,blob,thumb:t.toDataURL("image/jpeg",0.8),w,h,time:exif||file.lastModified||Date.now(),fromExif:!!exif,caption:"",added:Date.now(),ord:Date.now()*10+(ALB.nextId%10)};
 }
 const bmpCache=new Map();
 async function photoBitmap(p){
@@ -959,7 +967,7 @@ async function photoBitmap(p){
   while(bmpCache.size>40){ const [k,old]=bmpCache.entries().next().value; if(old.close) old.close(); bmpCache.delete(k); }
   return b;
 }
-function albumOrder(){ const a=[...ALB.photos]; if(ALB.sort==="time") a.sort((x,y)=>x.time-y.time||x.added-y.added); return a; }
+function albumOrder(){ const a=[...ALB.photos]; if(ALB.sort==="time") a.sort((x,y)=>x.time-y.time||(x.ord||0)-(y.ord||0)); else a.sort((x,y)=>(x.ord||0)-(y.ord||0)||(x.added||0)-(y.added||0)); return a; }
 const WD=["일","월","화","수","목","금","토"];
 const fmtDay=ms=>{ const d=new Date(ms); return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,"0")}.${String(d.getDate()).padStart(2,"0")} (${WD[d.getDay()]})`; };
 const fmtShort=ms=>{ const d=new Date(ms); return `${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}`; };
@@ -990,29 +998,63 @@ function albumPages(){
   }
   return pages;
 }
+/* --- 쪽 목록 → 펼침면(화면·펼침 출력)과 소책자(학교 프린터 양면) --- */
+function albumBookPages(){
+  const content=albumPages().map((page,i)=>({type:"page",page,no:i+1}));
+  return ALB.cover?[{type:"cover"},...content]:content;
+}
+// 화면과 펼침 출력: 앞에서부터 두 쪽씩
 function albumSheets(){
-  const pages=albumPages(), sheets=[]; let i=0;
-  if(ALB.cover){ sheets.push({cover:true,right:pages[0]||null}); i=1; }
-  for(;i<pages.length;i+=2) sheets.push({left:pages[i],right:pages[i+1]||null});
-  if(!sheets.length) sheets.push({cover:ALB.cover,right:null});
-  return sheets;
+  const P=albumBookPages(), out=[];
+  for(let i=0;i<P.length;i+=2) out.push({left:P[i],right:P[i+1]||{type:"blank"}});
+  if(!out.length) out.push({left:ALB.cover?{type:"cover"}:{type:"blank"},right:{type:"blank"}});
+  return out;
+}
+// 소책자: 쪽 수를 4의 배수로 맞추고(뒤표지 포함), 반으로 접었을 때 순서가 맞게 앞·뒷면을 배열해요
+function bookletPages(){
+  const P=albumBookPages();
+  if(P.length&&P.length%4===0) return P;          // 딱 맞으면 빈 쪽 없이
+  const body=[...P]; while((body.length+1)%4) body.push({type:"blank"});
+  return [...body,{type:"back"}];                    // 남는 자리는 빈 쪽, 맨 끝은 뒤표지
+}
+function bookletSheets(){
+  const P=bookletPages(), N=P.length, out=[];
+  for(let s=0;s<N/4;s++){
+    out.push({left:P[N-2*s-1],right:P[2*s],label:`${s+1}번 종이 앞면`});
+    out.push({left:P[2*s+1],right:P[N-2*s-2],label:`${s+1}번 종이 뒷면`});
+  }
+  return out;
 }
 /* --- 한 장(펼친 두 쪽) 그리기 --- */
-async function drawSheet(c,sheet,si,total,scale){
+async function drawSheet(c,sheet,scale){
   const W=SHEET.W, H=SHEET.H, F=FLAVORS[ALB.flavor]||FLAVORS.strawberry;
   c.width=Math.round(W*scale); c.height=Math.round(H*scale);
   const x=c.getContext("2d"); x.setTransform(scale,0,0,scale,0,0);
   paper(x,W,H);
-  // 가운데 접힌 자국
   const g=x.createLinearGradient(W/2-60,0,W/2+60,0); g.addColorStop(0,"rgba(74,54,64,0)"); g.addColorStop(.5,"rgba(74,54,64,.10)"); g.addColorStop(1,"rgba(74,54,64,0)");
   x.fillStyle=g; x.fillRect(W/2-60,0,120,H);
   x.strokeStyle="rgba(74,54,64,.18)"; x.setLineDash([10,10]); x.beginPath(); x.moveTo(W/2,30); x.lineTo(W/2,H-30); x.stroke(); x.setLineDash([]);
-  // 위아래 케이크 크림 띠
   drawCreamBand(x,0,0,W,F,false); drawCreamBand(x,0,H,W,F,true);
   const half=W/2;
-  if(sheet.cover) await drawCover(x,0,half,H,F); else await drawPage(x,0,half,H,sheet.left,si*2+(ALB.cover?0:1),F,"left");
-  await drawPage(x,half,half,H,sheet.right,si*2+(ALB.cover?1:2),F,"right");
+  await drawHalf(x,0,half,H,sheet.left,F,"left");
+  await drawHalf(x,half,half,H,sheet.right,F,"right");
   return c;
+}
+async function drawHalf(x,X,w,H,obj,F,side){
+  if(!obj) return;
+  if(obj.type==="cover") return drawCover(x,X,w,H,F);
+  if(obj.type==="back") return drawBack(x,X,w,H,F);
+  if(obj.type==="page") return drawPage(x,X,w,H,obj.page,obj.no,F,side);
+  return drawPage(x,X,w,H,null,(X>0?7:3),F,side);   // 빈 쪽
+}
+function drawBack(x,X,w,H,F){
+  const cx=X+w/2, ph=albumOrder();
+  ["strawberry","candle","candle","candle","strawberry"].forEach((id,i)=>drawSprite(x,id,cx+(i-2)*78,H/2-70,7));
+  x.textAlign="center"; x.textBaseline="alphabetic";
+  x.fillStyle="#4a3640"; x.font=`44px ${FT}`; fitText(x,ALB.title||"우리의 사진첩",cx,H/2+60,w-240);
+  if(ph.length){ x.fillStyle="#9a7f8c"; x.font=`26px ${FB}`;
+    x.fillText(`${fmtShort(ph.reduce((a,p)=>Math.min(a,p.time),Infinity))} – ${fmtShort(ph.reduce((a,p)=>Math.max(a,p.time),0))} · 사진 ${ph.length}장`,cx,H/2+110); }
+  x.fillStyle="#b08a9a"; x.font='20px Silkscreen, monospace'; x.fillText("TOPPING CAKE PHOTO ALBUM",cx,H-120);
 }
 function drawCreamBand(x,X,Y,W,F,bottom){
   const D=8, h=46;
@@ -1068,7 +1110,7 @@ async function drawPage(x,X,w,H,page,pageNo,F,side){
     try{ const b=await photoBitmap(p);
       x.imageSmoothingEnabled=true; x.imageSmoothingQuality="high"; x.drawImage(b,-fw/2+pad,-fh/2+pad,f.w,f.h);
       x.strokeStyle="rgba(74,54,64,.25)"; x.lineWidth=2; x.strokeRect(-fw/2+pad,-fh/2+pad,f.w,f.h);
-    }catch(e){}
+    }catch(e){ x.fillStyle="#f6eef2"; x.fillRect(-fw/2+pad,-fh/2+pad,f.w,f.h); x.fillStyle="#b08a9a"; x.textAlign="center"; x.font=`24px ${FB}`; x.fillText("사진 불러오는 중…",0,-fh/2+pad+f.h/2); }
     x.textAlign="center"; x.fillStyle="#4a3640";
     const cy=fh/2-capH/2, tw=Math.max(f.w-20,160);
     if(p.caption){ x.font=`bold 30px ${FB}`; fitText(x,p.caption,0,cy+4,tw); x.fillStyle="#9a7f8c"; x.font=`20px ${FB}`; x.fillText(fmtDay(p.time),0,cy+34); }
@@ -1086,20 +1128,82 @@ async function drawPage(x,X,w,H,page,pageNo,F,side){
 }
 
 /* --- 사진첩 화면 --- */
-let albRenderT=0, albRendering=0;
-function renderAlbum(){
+/* --- 사진첩 저장(구글 드라이브) --- */
+const albumLink=code=>location.origin+location.pathname+"#album-"+code;
+function rememberAlbum(a){ let l=[]; try{ l=JSON.parse(lsGet("rpAlbums")||"[]"); }catch(e){}
+  l=[{code:a.code,title:a.title,flavor:a.flavor,mine:!!a.mine},...l.filter(x=>x.code!==a.code)].slice(0,30); lsSet("rpAlbums",JSON.stringify(l)); }
+function forgetAlbum(code){ let l=[]; try{ l=JSON.parse(lsGet("rpAlbums")||"[]"); }catch(e){} lsSet("rpAlbums",JSON.stringify(l.filter(x=>x.code!==code))); }
+const blobToBase64=b=>new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(String(r.result).split(",")[1]); r.onerror=rej; r.readAsDataURL(b); });
+function base64ToBlob(s){ const bin=atob(s), u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); return new Blob([u],{type:"image/jpeg"}); }
+async function makeThumb(blob){ const b=await createImageBitmap(blob), k=240/Math.max(b.width,b.height), c=document.createElement("canvas");
+  c.width=Math.round(b.width*k); c.height=Math.round(b.height*k); c.getContext("2d").drawImage(b,0,0,c.width,c.height); if(b.close) b.close(); return c.toDataURL("image/jpeg",0.8); }
+// 저장공간이 사진첩을 지원하는 새 버전인지 확인
+async function albumServerReady(){ try{ return (await api("version"))>=3; }catch(e){ return e&&e.code==="network"?"network":false; } }
+const DEPLOY_HELP=["저장공간(구글 Apps Script)을 사진첩용 새 코드로 바꿔야 사진을 저장할 수 있어요.",
+  "① Apps Script 편집기에 저장소의 최신 apps-script/Code.gs를 붙여 넣고 저장",
+  "② 위쪽 함수 목록에서 setup을 골라 ▶ 실행 → 구글 드라이브 권한 허용",
+  "③ 배포 → 배포 관리 → 연필 → 버전: 새 버전 → 배포"];
+
+/* --- 사진첩 시작 화면 --- */
+function renderAlbumStart(){
   const app=$("#app"); app.replaceChildren();
+  if(!API_URL){ location.hash="album-local"; return; }
+  let flavor="strawberry";
+  const titleIn=el("input",{id:"nalbtitle",maxlength:"24",placeholder:"예: 2학년 8반 1년의 기록",autocomplete:"off"});
+  const fl=Object.entries(FLAVORS).map(([id,f])=>{ const b=el("button",{type:"button",class:"flavor sm","aria-pressed":String(id===flavor),
+      onclick:()=>{ flavor=id; fl.forEach(z=>z.setAttribute("aria-pressed",String(z.dataset.id===id))); }},el("img",{src:cakeURL(id),alt:""}),el("span",{text:f.ko})); b.dataset.id=id; return b; });
+  const go=el("button",{class:"btn primary",type:"submit"},"사진첩 만들기");
+  const notice=el("div",{class:"banner",hidden:true});
+  const form=el("form",{class:"panel create",onsubmit:async e=>{ e.preventDefault();
+      go.disabled=true; go.textContent="만드는 중…";
+      try{ const code=await api("createAlbum",{title:titleIn.value.trim(),sub:"",flavor,cover:true,sort:"time"});
+        rememberAlbum({code,title:titleIn.value.trim(),flavor,mine:true}); lsSet("albJustMade",code); location.hash="album-"+code; }
+      catch(err){ go.disabled=false; go.textContent="사진첩 만들기";
+        if(err&&err.code==="invalid"){ showDeploy(); } else toast(errMsg(err,"사진첩을 만들지 못했어요. 다시 시도해 주세요")); } }},
+    el("h2",{text:"새 사진첩 만들기"}),
+    el("div",{class:"field"},el("label",{for:"nalbtitle",text:"사진첩 제목"}),titleIn),
+    el("div",{class:"field"},el("label",{text:"꾸밈 색"}),el("div",{class:"flavors"},fl)),
+    el("div",{class:"row"},go,el("span",{class:"hint",text:"만들면 친구들에게 보낼 링크가 나와요. 링크를 받은 사람도 사진을 보탤 수 있어요."})));
+  let recent=[]; try{ recent=JSON.parse(lsGet("rpAlbums")||"[]"); }catch(e){}
+  app.append(
+    el("div",{class:"topbar"},el("button",{class:"btn small ghost",type:"button",onclick:()=>location.hash=""},"← 처음으로"),el("span",{class:"pixel-label",text:"photo album"})),
+    el("div",{class:"cake-head"},el("div",{class:"pixel-label",text:"Topping cake photo album"}),el("h1",{text:"토핑케이크 사진첩"}),
+      el("div",{class:"sub",text:"사진을 모아 시간순으로 예쁘게 배치하고, 소책자로 인쇄해요"})),
+    notice, form,
+    el("div",{class:"list-head"},el("h2",{text:"최근에 연 사진첩"})),
+    recent.length?el("div",{class:"tiles"},recent.map(a=>el("button",{class:"tile",type:"button",onclick:()=>location.hash="album-"+a.code},
+      el("img",{src:cakeURL(a.flavor in FLAVORS?a.flavor:"strawberry"),alt:""}),el("b",{text:a.title||"우리의 사진첩"}),el("span",{text:a.mine?"내가 만든 사진첩":"함께 쓰는 사진첩"})))):
+      el("div",{class:"empty",text:"이 기기에서 연 사진첩이 여기에 모여요."}),
+    el("p",{class:"hint",style:"text-align:center;margin:0"},el("button",{class:"linkish",type:"button",onclick:()=>location.hash="album-local"},"저장하지 않고 이 기기에서만 만들기")));
+  function showDeploy(){ notice.hidden=false; notice.replaceChildren(...DEPLOY_HELP.map((t,i)=>el(i?"div":"b",{text:t}))); go.disabled=true; }
+  albumServerReady().then(ok=>{ if(ok===false) showDeploy(); });
+}
+
+/* --- 사진첩 편집 화면 (code가 없으면 이 기기에서만) --- */
+let albRenderT=0, albRendering=0;
+function renderAlbum(code){
+  const app=$("#app"); app.replaceChildren();
+  const server=!!code;
+  if(ALB.code!==code){ Object.assign(ALB,{code,photos:[],title:"",sub:"",flavor:"strawberry",sort:"time",cover:true,owner:!server,loaded:!server});
+    bmpCache.forEach(b=>b.close&&b.close()); bmpCache.clear(); }
+  const canSettings=()=>!server||ALB.owner;
+  const canEdit=p=>!server||ALB.owner||p.mine;
+  let metaT=0, uploading=false, fetching=0; const fieldT=new Map(), items=new Map();
+
   const fileIn=el("input",{type:"file",accept:"image/*",multiple:true,hidden:true,id:"albfile"});
-  const titleIn=el("input",{id:"albtitle",maxlength:"24",placeholder:"예: 2학년 8반 1년의 기록",value:ALB.title,autocomplete:"off"});
-  const subIn=el("input",{id:"albsub",maxlength:"30",placeholder:"예: 2026 신원고 · 우리가 함께한 순간들",value:ALB.sub,autocomplete:"off"});
-  titleIn.addEventListener("input",()=>{ ALB.title=titleIn.value.trim(); schedule(); });
-  subIn.addEventListener("input",()=>{ ALB.sub=subIn.value.trim(); schedule(); });
-  const fl=Object.entries(FLAVORS).map(([id,f])=>{ const b=el("button",{type:"button",class:"flavor sm","aria-pressed":String(id===ALB.flavor),
-      onclick:()=>{ ALB.flavor=id; fl.forEach(z=>z.setAttribute("aria-pressed",String(z.dataset.id===id))); schedule(); }},
-      el("img",{src:cakeURL(id),alt:""}),el("span",{text:f.ko})); b.dataset.id=id; return b; });
-  const sortSel=el("div",{class:"seg"},
-    ...[["time","찍은 시간순"],["manual","올린 순서·직접 정렬"]].map(([v,t])=>{ const b=el("button",{type:"button","aria-pressed":String(ALB.sort===v),onclick:()=>{ ALB.sort=v; sortSel.querySelectorAll("button").forEach(z=>z.setAttribute("aria-pressed",String(z===b))); renderList(); schedule(); }},t); return b; }));
-  const coverCb=el("input",{type:"checkbox",id:"albcover",checked:ALB.cover}); coverCb.addEventListener("change",()=>{ ALB.cover=coverCb.checked; schedule(); });
+  const titleIn=el("input",{id:"albtitle",maxlength:"24",placeholder:"예: 2학년 8반 1년의 기록",autocomplete:"off"});
+  const subIn=el("input",{id:"albsub",maxlength:"30",placeholder:"예: 2026 신원고 · 우리가 함께한 순간들",autocomplete:"off"});
+  titleIn.addEventListener("input",()=>{ ALB.title=titleIn.value.trim(); saveMeta(); schedule(); });
+  subIn.addEventListener("input",()=>{ ALB.sub=subIn.value.trim(); saveMeta(); schedule(); });
+  const fl=Object.entries(FLAVORS).map(([id,f])=>{ const b=el("button",{type:"button",class:"flavor sm",
+      onclick:()=>{ if(!canSettings()) return; ALB.flavor=id; syncSettings(); saveMeta(); schedule(); }},el("img",{src:cakeURL(id),alt:""}),el("span",{text:f.ko})); b.dataset.id=id; return b; });
+  const segBtns=[["time","찍은 시간순"],["manual","직접 정렬"]].map(([v,t])=>{ const b=el("button",{type:"button",onclick:()=>{ if(!canSettings()) return; ALB.sort=v; syncSettings(); saveMeta(); renderList(); schedule(); }},t); b.dataset.v=v; return b; });
+  const coverCb=el("input",{type:"checkbox",id:"albcover"}); coverCb.addEventListener("change",()=>{ ALB.cover=coverCb.checked; saveMeta(); schedule(); });
+  function syncSettings(){ titleIn.value=ALB.title; subIn.value=ALB.sub; coverCb.checked=ALB.cover;
+    fl.forEach(z=>z.setAttribute("aria-pressed",String(z.dataset.id===ALB.flavor))); segBtns.forEach(z=>z.setAttribute("aria-pressed",String(z.dataset.v===ALB.sort)));
+    const dis=!canSettings(); [titleIn,subIn,coverCb,...fl,...segBtns].forEach(z=>z.disabled=dis); settingsNote.hidden=!dis; }
+  const settingsNote=el("p",{class:"hint",style:"margin:0",hidden:true,text:"제목·꾸밈·순서는 사진첩을 만든 사람만 바꿀 수 있어요."});
+
   const drop=el("div",{class:"drop",role:"button",tabindex:"0",onclick:()=>fileIn.click(),onkeydown:e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); fileIn.click(); } }},
     el("div",{class:"drop-icons"},["strawberry","cherry","heart"].map(id=>el("img",{src:spriteURL(id,4),alt:""}))),
     el("b",{text:"사진 올리기"}),el("span",{class:"hint",text:"여러 장을 한꺼번에 골라도 돼요 · 여기로 끌어다 놓아도 돼요"}));
@@ -1108,71 +1212,162 @@ function renderAlbum(){
   drop.addEventListener("drop",e=>addFiles(e.dataTransfer.files));
   fileIn.addEventListener("change",()=>{ addFiles(fileIn.files); fileIn.value=""; });
   const status=el("div",{class:"hint alb-status"});
-  const list=el("div",{class:"alb-list"});
-  const preview=el("div",{class:"alb-preview"});
-  const printBtn=el("button",{class:"btn primary",type:"button",onclick:()=>albumExport("print")},"🖨 B4로 출력하기");
-  const pdfBtn=el("button",{class:"btn",type:"button",onclick:()=>albumExport("pdf")},"B4 PDF 저장");
-  const clearBtn=el("button",{class:"linkish",type:"button",text:"사진 모두 빼기",onclick:()=>confirmInline(clearBtn,"올린 사진을 모두 뺄까요?",()=>{ ALB.photos=[]; bmpCache.forEach(b=>b.close&&b.close()); bmpCache.clear(); renderList(); schedule(); })});
-  ALB.ui={list,preview,status,btns:[printBtn,pdfBtn]};
+  const list=el("div",{class:"alb-list"}), preview=el("div",{class:"alb-preview"});
+  const head=el("div",{class:"cake-head"},el("div",{class:"pixel-label",text:"Topping cake photo album"}),el("h1",{text:server?"사진첩을 불러오는 중…":"토핑케이크 사진첩"}),
+    el("div",{class:"sub",text:server?"":"이 기기에서만 만드는 사진첩이에요"}));
+  // 출력
+  const B=(kind,label,cls="btn")=>el("button",{class:cls,type:"button",onclick:()=>albumExport(kind)},label);
+  const bookPrint=B("bprint","📖 소책자로 인쇄하기","btn primary"), bookPdf=B("bpdf","소책자 PDF 저장");
+  const spreadPrint=B("print","🖨 펼침면 B4 출력"), spreadPdf=B("pdf","펼침면 PDF 저장");
+  ALB.ui={btns:[bookPrint,bookPdf,spreadPrint,spreadPdf]};
+  const printHelp=el("section",{class:"panel print-help"},
+    el("h3",{text:"📖 학교 프린터로 소책자 만들기"}),
+    el("ol",{},
+      el("li",{},"",el("b",{text:"소책자로 인쇄하기"}),"를 누르고 인쇄 창에서 아래처럼 맞춰요."),
+      el("li",{},"용지 ",el("b",{text:"B4"}),", 방향 ",el("b",{text:"가로"}),", 배율 ",el("b",{text:"실제 크기(100%)"}),", 여백 ",el("b",{text:"없음"})),
+      el("li",{},el("b",{text:"양면 인쇄"})," → ",el("b",{text:"짧은 쪽으로 넘기기"}),"(Flip on short edge)"),
+      el("li",{},"나온 종이를 순서 그대로 겹쳐 ",el("b",{text:"반으로 접고"}),", 접힌 가운데를 스테이플러로 찍으면 완성!")),
+    el("p",{class:"hint",style:"margin:0",text:"프린터에 양면 인쇄가 없으면 소책자 PDF를 저장한 뒤, 홀수 장(앞면)을 먼저 인쇄하고 종이를 뒤집어 넣어 짝수 장(뒷면)을 인쇄하세요. 처음엔 1장만 시험 인쇄해 앞뒤 방향을 확인하면 좋아요."}));
+  const share=el("section",{class:"panel share owner",hidden:true});
+  const friendNote=el("div",{class:"banner",hidden:true});
+  const delZone=el("div",{class:"danger-zone",hidden:true});
+  const clearBtn=el("button",{class:"linkish",type:"button",text:"사진 모두 빼기",hidden:server,onclick:()=>confirmInline(clearBtn,"올린 사진을 모두 뺄까요?",()=>{ ALB.photos=[]; bmpCache.clear(); renderList(); schedule(); })});
 
   app.append(
-    el("div",{class:"topbar"},el("button",{class:"btn small ghost",type:"button",onclick:()=>location.hash=""},"← 처음으로"),el("span",{class:"pixel-label",text:"photo album"})),
-    el("div",{class:"cake-head"},el("div",{class:"pixel-label",text:"Topping cake photo album"}),el("h1",{text:"토핑케이크 사진첩"}),
-      el("div",{class:"sub",text:"찍은 시간순으로, 사진을 자르지 않고 한 쪽에 2~4장씩 배치해 줘요"})),
+    el("div",{class:"topbar"},el("button",{class:"btn small ghost",type:"button",onclick:()=>location.hash=server?"album":""},"← 사진첩 목록"),el("span",{class:"pixel-label",text:server?"album "+code:"photo album"})),
+    head, share, friendNote,
     el("section",{class:"panel create"},
       drop,fileIn,status,
       el("div",{class:"field"},el("label",{for:"albtitle",text:"사진첩 제목"}),titleIn),
       el("div",{class:"field"},el("label",{for:"albsub",text:"한 줄 소개 (선택)"}),subIn),
       el("div",{class:"field"},el("label",{text:"꾸밈 색"}),el("div",{class:"flavors"},fl)),
-      el("div",{class:"field"},el("label",{text:"배열 순서"}),sortSel,
-        el("label",{class:"check"},coverCb,el("span",{text:" 첫 장 왼쪽에 표지 넣기"}))),
-      el("p",{class:"hint",style:"margin:0",text:"🔒 사진은 서버에 올라가지 않고 이 기기 안에서만 처리돼요. 페이지를 새로고침하거나 닫으면 사라지니, 다 만들면 PDF로 저장해 두세요."})),
+      el("div",{class:"field"},el("label",{text:"배열 순서"}),el("div",{class:"seg"},segBtns),
+        el("label",{class:"check"},coverCb,el("span",{text:" 맨 앞에 표지 넣기"}))),
+      settingsNote,
+      el("p",{class:"hint",style:"margin:0",text:server?"☁️ 사진은 사진첩을 만든 사람의 구글 드라이브에 저장돼요. 링크를 받은 사람은 누구나 사진을 보고 보탤 수 있으니, 링크는 필요한 사람에게만 보내 주세요.":"🔒 사진은 이 기기 안에서만 처리돼요. 새로고침하면 사라지니 다 만들면 PDF로 저장해 두세요."})),
     el("div",{class:"list-head"},el("h2",{text:"올린 사진"}),clearBtn),
     list,
     el("div",{class:"list-head"},el("h2",{text:"미리보기"}),el("span",{class:"hint",text:"B4 가로 한 장 = 펼친 두 쪽 · 사진 모양에 맞춰 한 쪽에 2~4장"})),
     preview,
-    el("div",{class:"actions"},printBtn,pdfBtn));
-  renderList(); schedule(0);
+    el("div",{class:"actions"},bookPrint,bookPdf,spreadPrint,spreadPdf),
+    printHelp, delZone);
+  syncSettings(); renderList(); schedule(0);
+
+  let alive=true; S.unsub.push(()=>{ alive=false; });
+  if(server) loadAlbum(true);
+
+  async function loadAlbum(first){
+    try{
+      const a=await api("getAlbum",{code}); if(!alive) return;
+      if(first||!ALB.owner){ Object.assign(ALB,{title:a.title,sub:a.sub,flavor:(a.flavor in FLAVORS)?a.flavor:"strawberry",cover:a.cover,sort:a.sort}); }
+      ALB.owner=a.mine; ALB.loaded=true;
+      mergePhotos(a.photos);
+      head.querySelector("h1").textContent=ALB.title||"우리의 사진첩";
+      head.querySelector(".sub").textContent=a.mine?"내가 만든 사진첩이에요":"함께 만드는 사진첩이에요. 사진을 보태 주세요!";
+      rememberAlbum({code,title:ALB.title,flavor:ALB.flavor,mine:a.mine});
+      if(first){ syncSettings(); renderShare(a.mine); renderDel(a.mine);
+        const t=setInterval(()=>{ if(document.visibilityState==="visible"&&!uploading&&!document.activeElement.matches("input,textarea")) loadAlbum(false); },20000);
+        S.unsub.push(()=>clearInterval(t)); }
+      else if(!ALB.owner) syncSettings();
+      renderList(); schedule(); fetchBlobs();
+    }catch(err){ if(!alive) return;
+      if(first){ const h1=head.querySelector("h1"), sub=head.querySelector(".sub");
+        if(err&&err.code==="invalid"){ h1.textContent="사진첩을 열 수 없어요"; sub.textContent=DEPLOY_HELP.join(" "); }
+        else if(err&&err.code==="not_found"){ h1.textContent="사진첩을 찾을 수 없어요"; sub.textContent="링크를 다시 확인해 주세요."; forgetAlbum(code); }
+        else { h1.textContent="사진첩을 열 수 없어요"; sub.textContent=errMsg(err,"잠시 뒤 다시 열어 주세요."); }
+        drop.hidden=true; } }
+  }
+  function mergePhotos(remote){
+    const byId=new Map(ALB.photos.map(p=>[p.id,p])), keep=[];
+    remote.forEach(r=>{ const p=byId.get(r.id);
+      if(p){ if(!p.dirty){ Object.assign(p,{time:r.time,caption:r.caption,ord:r.ord,dateEdited:r.dateEdited,fromExif:r.fromExif}); } p.mine=r.mine; keep.push(p); }
+      else keep.push({...r,added:r.createdAt,blob:null,thumb:null}); });
+    ALB.photos.filter(p=>p.uploading).forEach(p=>keep.push(p));
+    ALB.photos=keep;
+  }
+  function fetchBlobs(){
+    const todo=ALB.photos.filter(p=>!p.blob&&!p.loading&&!p.uploading);
+    const next=()=>{ if(!alive) return; const p=todo.shift(); if(!p) return; p.loading=true; fetching++;
+      api("getPhoto",{album:code,id:p.id}).then(async d=>{ p.blob=base64ToBlob(d); p.thumb=await makeThumb(p.blob); })
+        .catch(()=>{ p.failed=true; }).finally(()=>{ p.loading=false; fetching--; updateItem(p); schedule(600); next(); }); };
+    for(let i=0;i<4;i++) next();
+  }
+  function renderShare(mine){
+    if(mine){ const link=albumLink(code), inp=el("input",{readonly:true,value:link,"aria-label":"사진첩 링크",onfocus:e=>e.target.select()});
+      const invite=`📷 "${ALB.title||"우리의 사진첩"}" 사진첩에 사진을 보태 주세요! 링크를 누르면 바로 사진을 올릴 수 있어요.`;
+      share.replaceChildren(
+        el("div",{class:"row",style:"justify-content:space-between"},el("h3",{text:lsGet("albJustMade")===code?"사진첩이 만들어졌어요! 🎉":"내 사진첩 링크"}),el("span",{},"코드 ",el("span",{class:"code",text:code.toUpperCase()}))),
+        el("div",{class:"hint",text:"이 링크를 보내면 받은 사람도 사진을 올릴 수 있어요. 나중에 이 링크로 다시 열어 고치고 인쇄할 수 있어요."}),
+        el("div",{class:"linkbox"},inp,el("button",{class:"btn small",type:"button",onclick:()=>copyText(link,inp)},"링크 복사")),
+        el("div",{class:"row"},navigator.share?el("button",{class:"btn small primary",type:"button",onclick:()=>navigator.share({title:"토핑케이크 사진첩",text:invite,url:link}).catch(()=>{})},"📤 카톡·문자로 보내기"):null,
+          el("button",{class:"linkish",type:"button",onclick:()=>copyText(invite+"\n"+link)},"초대 문구까지 복사하기")));
+      share.hidden=false; lsSet("albJustMade",""); }
+    else { friendNote.hidden=false; friendNote.textContent="📷 이 사진첩에 사진을 보태 주세요. 내가 올린 사진은 날짜·설명을 고치거나 뺄 수 있어요."; }
+  }
+  function renderDel(mine){ delZone.replaceChildren(); delZone.hidden=!mine; if(!mine) return;
+    const b=el("button",{class:"linkish",type:"button",text:"이 사진첩 삭제하기",onclick:()=>confirmInline(b,"사진첩과 저장된 사진을 모두 지울까요?",async()=>{
+      try{ await api("deleteAlbum",{code}); forgetAlbum(code); toast("사진첩을 지웠어요"); location.hash="album"; }catch(e){ toast(errMsg(e,"지우지 못했어요")); } })});
+    delZone.append(el("span",{class:"hint",text:"내가 만든 사진첩이에요. "}),b); }
+  function saveMeta(){ if(!server||!ALB.owner) return; clearTimeout(metaT);
+    metaT=setTimeout(()=>api("updateAlbum",{code,title:ALB.title,sub:ALB.sub,flavor:ALB.flavor,cover:ALB.cover,sort:ALB.sort}).then(()=>{ head.querySelector("h1").textContent=ALB.title||"우리의 사진첩"; rememberAlbum({code,title:ALB.title,flavor:ALB.flavor,mine:true}); }).catch(e=>toast(errMsg(e,"설정을 저장하지 못했어요"))),800); }
+  function savePhoto(p,fields,ms=700){ if(!server) return; p.dirty=true; clearTimeout(fieldT.get(p.id));
+    fieldT.set(p.id,setTimeout(()=>api("updatePhoto",{album:code,id:p.id,...fields}).then(()=>{ p.dirty=false; }).catch(e=>{ p.dirty=false; toast(errMsg(e,"저장하지 못했어요")); }),ms)); }
 
   async function addFiles(files){
+    if(server&&!ALB.loaded){ toast("사진첩을 불러온 뒤에 올려 주세요"); return; }
     const arr=[...files].filter(f=>/^image\//.test(f.type)||/\.(jpe?g|png|webp|gif|heic|heif)$/i.test(f.name));
     if(!arr.length){ toast("사진 파일을 골라 주세요"); return; }
-    const room=ALB_MAX-ALB.photos.length; if(room<=0){ toast(`사진은 ${ALB_MAX}장까지 넣을 수 있어요`); return; }
-    let ok=0, bad=0, noTime=0; const take=arr.slice(0,room);
-    for(let i=0;i<take.length;i++){ status.textContent=`사진 불러오는 중… ${i+1} / ${take.length}`;
-      try{ const p=await loadPhotoFile(take[i]); ALB.photos.push(p); ok++; if(!p.fromExif) noTime++; }catch(e){ bad++; } }
-    status.textContent="";
-    let msg=`사진 ${ok}장을 넣었어요`;
-    if(bad) msg+=` · ${bad}장은 열 수 없는 형식이에요`;
-    toast(msg);
+    const max=server?300:ALB_MAX, room=max-ALB.photos.length; if(room<=0){ toast(`사진은 ${max}장까지 넣을 수 있어요`); return; }
+    uploading=true; let ok=0, bad=0, noTime=0, upFail=0; const take=arr.slice(0,room);
+    for(let i=0;i<take.length;i++){ status.textContent=`사진 ${server?"올리는":"불러오는"} 중… ${i+1} / ${take.length}`;
+      let p; try{ p=await loadPhotoFile(take[i]); }catch(e){ bad++; continue; }
+      if(!p.fromExif) noTime++;
+      if(server){ p.uploading=true; p.mine=true; ALB.photos.push(p); renderList(); schedule(800);
+        try{ const id=await api("addPhoto",{album:code,data:await blobToBase64(p.blob),w:p.w,h:p.h,time:p.time,fromExif:p.fromExif,caption:"",ord:p.ord});
+          const b=bmpCache.get(p.id); if(b){ bmpCache.delete(p.id); bmpCache.set(id,b); } p.id=id; p.uploading=false; ok++; }
+        catch(e){ ALB.photos=ALB.photos.filter(z=>z!==p); upFail++; if(e&&e.code==="invalid"){ toast("저장공간을 새 버전으로 바꿔야 사진을 올릴 수 있어요"); break; } }
+      } else { ALB.photos.push(p); ok++; }
+    }
+    uploading=false;
+    toast(`사진 ${ok}장을 ${server?"올렸어요":"넣었어요"}`+(bad?` · ${bad}장은 열 수 없는 형식이에요`:"")+(upFail?` · ${upFail}장은 올리지 못했어요`:""));
     status.textContent=[bad?`열 수 없었던 사진 ${bad}장: 아이폰 HEIC 사진이면 '설정 → 카메라 → 포맷 → 높은 호환성'으로 바꾸거나 JPG로 바꿔 올려 주세요.`:"",
-      noTime?`찍은 시간 정보가 없는 사진 ${noTime}장은 파일 날짜로 정렬했어요. (캡처·메신저로 받은 사진은 시간 정보가 지워져 있을 수 있어요)`:""].filter(Boolean).join(" ");
-    if(arr.length>room) toast(`사진은 ${ALB_MAX}장까지 넣을 수 있어 ${arr.length-room}장은 빠졌어요`);
+      upFail?`올리지 못한 사진 ${upFail}장은 인터넷 연결을 확인하고 다시 올려 주세요.`:"",
+      noTime?`찍은 시간 정보가 없는 사진 ${noTime}장은 파일 날짜로 넣었어요. 날짜를 확인해 주세요.`:""].filter(Boolean).join(" ");
     renderList(); schedule(0);
   }
   function renderList(){
-    const ph=albumOrder();
-    list.replaceChildren(...(ph.length?ph.map((p,idx)=>{
-      const cap=el("input",{class:"alb-cap",maxlength:"20",placeholder:"설명 (선택)",value:p.caption,"aria-label":"사진 설명"});
-      cap.addEventListener("input",()=>{ p.caption=cap.value.trim(); schedule(); });
-      const move=d=>{ const a=ALB.photos, i=a.indexOf(p), j=i+d; if(j<0||j>=a.length) return; [a[i],a[j]]=[a[j],a[i]]; renderList(); schedule(); };
-      return el("div",{class:"alb-item"},
-        el("div",{class:"alb-thumb"},el("img",{src:p.thumb,alt:p.name}),el("span",{class:"alb-no",text:String(idx+1)})),
-        el("div",{class:"alb-meta"},dateBox(p),cap,
-          el("div",{class:"alb-tools"},
-            ALB.sort==="manual"?el("button",{class:"btn small ghost",type:"button","aria-label":"앞으로",onclick:()=>move(-1)},"◀"):null,
-            ALB.sort==="manual"?el("button",{class:"btn small ghost",type:"button","aria-label":"뒤로",onclick:()=>move(1)},"▶"):null,
-            el("button",{class:"btn small ghost",type:"button","aria-label":"빼기",onclick:()=>{ ALB.photos=ALB.photos.filter(z=>z!==p); const b=bmpCache.get(p.id); if(b&&b.close) b.close(); bmpCache.delete(p.id); renderList(); schedule(); }},"✕"))));
-    }):[el("div",{class:"empty",text:"아직 사진이 없어요. 위의 '사진 올리기'를 눌러 주세요."})]));
+    const ph=albumOrder(); items.clear();
+    list.replaceChildren(...(ph.length?ph.map((p,idx)=>{ const it=itemFor(p,idx); items.set(p.id,{it,p,idx}); return it; }):
+      [el("div",{class:"empty",text:server&&!ALB.loaded?"사진첩을 불러오는 중이에요…":"아직 사진이 없어요. 위의 '사진 올리기'를 눌러 주세요."})]));
     ALB.ui.btns.forEach(b=>b.disabled=!ph.length);
   }
-  function dateBox(p){
+  function updateItem(p){ const r=items.get(p.id); if(r) r.it.replaceWith(r.it=itemFor(p,r.idx)); }
+  function itemFor(p,idx){
+    const ed=canEdit(p);
+    const cap=el("input",{class:"alb-cap",maxlength:"20",placeholder:ed?"설명 (선택)":"",value:p.caption||"","aria-label":"사진 설명",disabled:!ed});
+    cap.addEventListener("input",()=>{ p.caption=cap.value.trim(); savePhoto(p,{caption:p.caption}); schedule(); });
+    const move=d=>{ const o=albumOrder(), i=o.indexOf(p), q=o[i+d]; if(!q) return;
+      if(q.ord===p.ord) q.ord+=d; [p.ord,q.ord]=[q.ord,p.ord]; savePhoto(p,{ord:p.ord},0); savePhoto(q,{ord:q.ord},0); renderList(); schedule(); };
+    const thumb=p.thumb?el("img",{src:p.thumb,alt:p.name||"사진"}):el("span",{class:"alb-loading",text:p.failed?"불러오지 못했어요":"불러오는 중…"});
+    return el("div",{class:"alb-item"+(p.uploading?" up":"")},
+      el("div",{class:"alb-thumb"},thumb,el("span",{class:"alb-no",text:String(idx+1)}),p.uploading?el("span",{class:"alb-badge",text:"올리는 중"}):null,
+        server&&p.mine&&!ALB.owner?el("span",{class:"alb-badge mine",text:"내 사진"}):null),
+      el("div",{class:"alb-meta"},dateBox(p,ed),cap,
+        el("div",{class:"alb-tools"},
+          ALB.sort==="manual"&&canSettings()?el("button",{class:"btn small ghost",type:"button","aria-label":"앞으로",onclick:()=>move(-1)},"◀"):null,
+          ALB.sort==="manual"&&canSettings()?el("button",{class:"btn small ghost",type:"button","aria-label":"뒤로",onclick:()=>move(1)},"▶"):null,
+          ed&&!p.uploading?el("button",{class:"btn small ghost",type:"button","aria-label":"빼기",onclick:async e=>{ const btn=e.currentTarget;
+            if(!btn.dataset.armed){ btn.dataset.armed="1"; btn.textContent="뺄까요?"; setTimeout(()=>{ delete btn.dataset.armed; btn.textContent="✕"; },3000); return; }
+            if(server){ try{ await api("deletePhoto",{album:code,id:p.id}); }catch(err){ toast(errMsg(err,"빼지 못했어요")); return; } }
+            ALB.photos=ALB.photos.filter(z=>z!==p); const b=bmpCache.get(p.id); if(b&&b.close) b.close(); bmpCache.delete(p.id); renderList(); schedule(); }},"✕"):null)));
+  }
+  function dateBox(p,ed){
     const d=new Date(p.time), v=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-    const inp=el("input",{type:"date",class:"alb-dateinp",value:v,"aria-label":"사진 날짜"});
+    const inp=el("input",{type:"date",class:"alb-dateinp",value:v,"aria-label":"사진 날짜",disabled:!ed});
     inp.addEventListener("change",()=>{ const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(inp.value); if(!m) return;
-      const old=new Date(p.time);   // 같은 날 사진끼리 순서가 유지되게 시각은 그대로 둬요
+      const old=new Date(p.time);
       p.time=new Date(+m[1],+m[2]-1,+m[3],old.getHours(),old.getMinutes(),old.getSeconds()).getTime(); p.dateEdited=true;
-      renderList(); schedule(); toast(ALB.sort==="time"?"날짜를 바꿨어요. 순서도 다시 맞췄어요":"날짜를 바꿨어요"); });
+      savePhoto(p,{time:p.time},0); renderList(); schedule(); toast(ALB.sort==="time"?"날짜를 바꿨어요. 순서도 다시 맞췄어요":"날짜를 바꿨어요"); });
     const tag=p.dateEdited?"직접 고친 날짜":p.fromExif?"찍은 날짜":"파일 날짜 · 확인해 주세요";
     return el("label",{class:"alb-date-wrap"},inp,el("span",{class:"alb-date"+(p.fromExif||p.dateEdited?"":" guess"),text:tag}));
   }
@@ -1181,36 +1376,42 @@ function renderAlbum(){
     const job=++albRendering, sheets=albumSheets();
     const wpx=Math.min(preview.clientWidth||700,1000), scale=Math.min(1,wpx*(window.devicePixelRatio||1)/SHEET.W);
     const cs=[];
-    for(let i=0;i<sheets.length;i++){ if(job!==albRendering) return;
-      const c=el("canvas",{class:"alb-sheet",role:"img","aria-label":`사진첩 ${i+1}장`});
-      await drawSheet(c,sheets[i],i,sheets.length,scale); cs.push(el("figure",{class:"alb-fig"},c,el("figcaption",{class:"hint",text:`${i+1}장 / ${sheets.length}장`}))); }
-    if(job===albRendering) preview.replaceChildren(...cs);
+    for(let i=0;i<sheets.length;i++){ if(job!==albRendering||!alive) return;
+      const c=el("canvas",{class:"alb-sheet",role:"img","aria-label":`사진첩 ${i+1}번째 펼침면`});
+      await drawSheet(c,sheets[i],scale); cs.push(el("figure",{class:"alb-fig"},c,el("figcaption",{class:"hint",text:`펼침면 ${i+1} / ${sheets.length}`}))); }
+    if(job===albRendering&&alive) preview.replaceChildren(...cs);
   }
 }
 async function albumExport(kind){
   if(!ALB.photos.length) return;
-  const btns=ALB.ui.btns; btns.forEach(b=>b.disabled=true); toast(kind==="print"?"출력할 종이를 준비하는 중이에요":"PDF를 만드는 중이에요");
+  if(ALB.photos.some(p=>!p.blob)){ toast("아직 불러오는 사진이 있어요. 잠시 뒤 다시 눌러 주세요"); return; }
+  const btns=ALB.ui.btns; btns.forEach(b=>b.disabled=true);
+  const booklet=kind==="bprint"||kind==="bpdf", toPdf=kind==="pdf"||kind==="bpdf";
+  toast(toPdf?"PDF를 만드는 중이에요":"출력할 종이를 준비하는 중이에요");
   try{
     await Promise.all([`96px ${FT}`,`bold 28px ${FB}`,"22px Silkscreen"].map(f=>document.fonts.load(f,"가나다Aa").catch(()=>{})));
-    const sheets=albumSheets(), urls=[];
-    for(let i=0;i<sheets.length;i++){ const c=document.createElement("canvas"); await drawSheet(c,sheets[i],i,sheets.length,1); urls.push(c.toDataURL("image/jpeg",0.92)); }
-    const name=((ALB.title||"사진첩")+"_B4").replace(/[\\/:*?"<>|]/g,"");
-    if(kind==="pdf"){
+    const sheets=booklet?bookletSheets():albumSheets(), urls=[];
+    for(let i=0;i<sheets.length;i++){ const c=document.createElement("canvas"); await drawSheet(c,sheets[i],1.4); urls.push(c.toDataURL("image/jpeg",0.92)); c.width=c.height=0; }
+    const name=((ALB.title||"사진첩")+(booklet?"_소책자_B4":"_펼침면_B4")).replace(/[\\/:*?"<>|]/g,"");
+    if(toPdf){
       if(!window.jspdf){ toast("PDF 도구를 불러오지 못했어요"); return; }
       const pdf=new window.jspdf.jsPDF({unit:"mm",format:[257,364],orientation:"landscape"});
       urls.forEach((u,i)=>{ if(i) pdf.addPage([257,364],"landscape"); pdf.addImage(u,"JPEG",0,0,364,257); });
-      saveBlob(pdf.output("blob"),name+".pdf"); toast("저장했어요");
+      saveBlob(pdf.output("blob"),name+".pdf"); toast(booklet?"저장했어요. 양면·짧은 쪽 넘기기로 인쇄하세요":"저장했어요");
     } else {
       let root=$("#print-root"); if(root) root.remove();
       root=el("div",{id:"print-root"}); document.body.append(root);
+      const old=$("#print-page"); if(old) old.remove();
       const pg=el("style",{id:"print-page"}); pg.textContent="@page{size:364mm 257mm;margin:0}"; document.head.append(pg);
       await Promise.all(urls.map(u=>new Promise(res=>{ const im=new Image(); im.onload=res; im.onerror=res; im.src=u; im.alt=""; root.append(el("div",{class:"pp"},im)); })));
-      setTimeout(()=>window.print(),60);
+      if(booklet) toast("인쇄 창에서 B4 · 가로 · 양면(짧은 쪽 넘기기) · 실제 크기로 맞춰 주세요");
+      setTimeout(()=>window.print(),booklet?900:60);
     }
   }catch(e){ toast("만들지 못했어요. 다시 시도해 주세요"); }
   finally{ btns.forEach(b=>b.disabled=false); }
 }
 window.addEventListener("afterprint",()=>{ const s=$("#print-page"); if(s) s.remove(); });
+
 
 route();
 </script>

@@ -6,12 +6,21 @@
  * (실행: 나 / 액세스 권한: 모든 사용자) 로 배포하세요.
  * 시트에 붙인 경우 그 시트에, script.new 로 만든 경우 내 드라이브에
  * '롤링페이퍼 저장소' 시트를 자동으로 만들어 저장합니다.
+ *
+ * 사진첩 사진은 내 드라이브의 '토핑케이크 사진첩 (사진 저장소)' 폴더에 저장돼요.
+ * 이 코드로 처음 바꾼 뒤에는 편집기 위쪽에서 setup 함수를 골라 ▶ 실행을 한 번 눌러
+ * 드라이브 사용 권한을 허용한 다음, 배포 관리 → 연필 → 새 버전으로 배포하세요.
  */
+const VERSION = 3;
 
 const HEADERS = {
   cakes:    ['code', 'to', 'title', 'flavor', 'key', 'createdAt'],
-  toppings: ['id', 'cake', 'sprite', 'note', 'x', 'y', 'name', 'text', 'key', 'createdAt']
+  toppings: ['id', 'cake', 'sprite', 'note', 'x', 'y', 'name', 'text', 'key', 'createdAt'],
+  albums:   ['code', 'title', 'sub', 'flavor', 'cover', 'sort', 'key', 'createdAt'],
+  photos:   ['id', 'album', 'fileId', 'w', 'h', 'time', 'fromExif', 'dateEdited', 'caption', 'ord', 'key', 'createdAt']
 };
+const MAX_PHOTOS_PER_ALBUM = 300;
+const MAX_PHOTO_BASE64 = 6000000; // 사진 한 장 약 4.5MB까지
 const FLAVORS = ['strawberry', 'choco', 'matcha', 'lavender'];
 const SPRITES = ['strawberry', 'cherry', 'candle', 'heart', 'star', 'macaron', 'cookie', 'blueberry', 'cream', 'flower', 'choco', 'gummy'];
 const NOTES = ['cream', 'berry', 'mint', 'sky', 'lav'];
@@ -20,7 +29,7 @@ const MAX_TEXT = 600; // 편지 최대 글자 수
 const CODE_CHARS = 'abcdefghjkmnpqrstuvwxyz23456789';
 
 function doGet() {
-  return out({ ok: true, data: '토핑케이크 롤링페이퍼 저장공간이 작동하고 있어요. (편지 최대 ' + MAX_TEXT + '자)' });
+  return out({ ok: true, data: '토핑케이크 롤링페이퍼 저장공간이 작동하고 있어요. (편지 최대 ' + MAX_TEXT + '자 · 사진첩 저장 가능 · 버전 ' + VERSION + ')' });
 }
 
 function doPost(e) {
@@ -37,6 +46,123 @@ function doPost(e) {
 }
 
 const ACTIONS = {
+  version() { return VERSION; },
+
+  /* ---------- 사진첩 ---------- */
+  createAlbum(req) {
+    const key = str(req.key, 64), title = str(req.title, 24), sub = str(req.sub, 30);
+    const flavor = FLAVORS.indexOf(req.flavor) >= 0 ? req.flavor : 'strawberry';
+    if (!key) throw new Error('invalid');
+    return withLock(() => {
+      const used = {};
+      rows('albums').forEach(r => used[r.code] = true);
+      let code;
+      do { code = randomCode(); } while (used[code]);
+      append('albums', [code, title, sub, flavor, req.cover === false ? '0' : '1', req.sort === 'manual' ? 'manual' : 'time', key, Date.now()]);
+      return code;
+    });
+  },
+
+  getAlbum(req) {
+    const code = str(req.code, 12), key = str(req.key, 64);
+    const a = findAlbum(code);
+    if (!a) throw new Error('not_found');
+    const photos = rows('photos').filter(p => p.album === code).map(p => ({
+      id: p.id, w: Number(p.w), h: Number(p.h), time: Number(p.time), fromExif: p.fromExif === '1', dateEdited: p.dateEdited === '1',
+      caption: p.caption, ord: Number(p.ord), createdAt: Number(p.createdAt), mine: !!key && p.key === key
+    }));
+    return { code: a.code, title: a.title, sub: a.sub, flavor: a.flavor, cover: a.cover !== '0', sort: a.sort || 'time',
+      createdAt: Number(a.createdAt), mine: !!key && a.key === key, photos: photos };
+  },
+
+  updateAlbum(req) {
+    const code = str(req.code, 12), key = str(req.key, 64);
+    return withLock(() => {
+      const a = findAlbum(code);
+      if (!a) throw new Error('not_found');
+      if (!key || a.key !== key) throw new Error('forbidden');
+      const ch = {};
+      if (req.title != null) ch.title = str(req.title, 24);
+      if (req.sub != null) ch.sub = str(req.sub, 30);
+      if (req.flavor != null && FLAVORS.indexOf(req.flavor) >= 0) ch.flavor = req.flavor;
+      if (req.cover != null) ch.cover = req.cover ? '1' : '0';
+      if (req.sort != null) ch.sort = req.sort === 'manual' ? 'manual' : 'time';
+      setCells('albums', a._row, ch);
+      return true;
+    });
+  },
+
+  deleteAlbum(req) {
+    const code = str(req.code, 12), key = str(req.key, 64);
+    return withLock(() => {
+      const a = findAlbum(code);
+      if (!a) throw new Error('not_found');
+      if (!key || a.key !== key) throw new Error('forbidden');
+      const ps = rows('photos').filter(p => p.album === code);
+      ps.forEach(p => trashFile(p.fileId));
+      deleteRows('photos', ps.map(p => p._row));
+      deleteRows('albums', [a._row]);
+      return true;
+    });
+  },
+
+  addPhoto(req) {
+    const code = str(req.album, 12), key = str(req.key, 64);
+    const data = String(req.data || '');
+    if (!key || !data || data.length > MAX_PHOTO_BASE64 || !/^[A-Za-z0-9+/=]+$/.test(data)) throw new Error('invalid');
+    if (!findAlbum(code)) throw new Error('not_found');
+    if (rows('photos').filter(p => p.album === code).length >= MAX_PHOTOS_PER_ALBUM) throw new Error('too_many');
+    const id = Utilities.getUuid().slice(0, 12);
+    const file = albumFolder().createFile(Utilities.newBlob(Utilities.base64Decode(data), 'image/jpeg', code + '_' + id + '.jpg'));
+    const now = Date.now();
+    return withLock(() => {
+      append('photos', [id, code, file.getId(), clampInt(req.w, 1, 20000), clampInt(req.h, 1, 20000),
+        Number(req.time) > 0 ? Math.round(Number(req.time)) : now, req.fromExif ? '1' : '0', req.dateEdited ? '1' : '0',
+        str(req.caption, 20), Number(req.ord) > 0 ? Math.round(Number(req.ord)) : now, key, now]);
+      return id;
+    });
+  },
+
+  getPhoto(req) {
+    const code = str(req.album, 12), id = str(req.id, 40);
+    const p = rows('photos').find(r => r.id === id && r.album === code);
+    if (!p) throw new Error('not_found');
+    return Utilities.base64Encode(DriveApp.getFileById(p.fileId).getBlob().getBytes());
+  },
+
+  updatePhoto(req) {
+    const code = str(req.album, 12), id = str(req.id, 40), key = str(req.key, 64);
+    return withLock(() => {
+      const p = rows('photos').find(r => r.id === id && r.album === code);
+      if (!p) throw new Error('not_found');
+      const a = findAlbum(code);
+      if (!key || (p.key !== key && !(a && a.key === key))) throw new Error('forbidden');
+      const ch = {};
+      if (req.caption != null) ch.caption = str(req.caption, 20);
+      if (req.time != null && Number(req.time) > 0) { ch.time = Math.round(Number(req.time)); ch.dateEdited = '1'; }
+      if (req.ord != null && Number(req.ord) > 0) {
+        if (!(a && a.key === key)) throw new Error('forbidden');
+        ch.ord = Math.round(Number(req.ord));
+      }
+      setCells('photos', p._row, ch);
+      return true;
+    });
+  },
+
+  deletePhoto(req) {
+    const code = str(req.album, 12), id = str(req.id, 40), key = str(req.key, 64);
+    return withLock(() => {
+      const p = rows('photos').find(r => r.id === id && r.album === code);
+      if (!p) throw new Error('not_found');
+      const a = findAlbum(code);
+      if (!key || (p.key !== key && !(a && a.key === key))) throw new Error('forbidden');
+      trashFile(p.fileId);
+      deleteRows('photos', [p._row]);
+      return true;
+    });
+  },
+
+  /* ---------- 롤링페이퍼 ---------- */
   getCake(req) {
     const c = findCake(str(req.code, 12));
     if (!c) throw new Error('not_found');
@@ -122,11 +248,34 @@ function book() {
   props.setProperty('SHEET_ID', ss.getId());
   return ss;
 }
-/** 편집기에서 한 번 실행하면 저장용 시트를 만들고 주소를 로그에 보여 줘요. */
+/** 편집기에서 한 번 실행하면 저장용 시트·사진 폴더를 만들고 권한을 허용받아요. */
 function setup() {
   const ss = book();
-  sheet('cakes'); sheet('toppings');
+  sheet('cakes'); sheet('toppings'); sheet('albums'); sheet('photos');
+  const folder = albumFolder();
   Logger.log('저장용 시트: ' + ss.getUrl());
+  Logger.log('사진 폴더: ' + folder.getUrl());
+}
+function albumFolder() {
+  const props = PropertiesService.getScriptProperties();
+  const id = props.getProperty('ALBUM_FOLDER_ID');
+  if (id) { try { return DriveApp.getFolderById(id); } catch (e) {} }
+  const f = DriveApp.createFolder('토핑케이크 사진첩 (사진 저장소)');
+  props.setProperty('ALBUM_FOLDER_ID', f.getId());
+  return f;
+}
+function trashFile(id) { try { DriveApp.getFileById(id).setTrashed(true); } catch (e) {} }
+function findAlbum(code) {
+  return code ? rows('albums').find(r => r.code === code) : null;
+}
+function setCells(name, row, changes) {
+  const sh = sheet(name), h = HEADERS[name];
+  Object.keys(changes).forEach(k => {
+    const col = h.indexOf(k);
+    if (col < 0) return;
+    const s = String(changes[k]);
+    sh.getRange(row, col + 1).setValue(/^[=+\-@]/.test(s) ? "'" + s : s);
+  });
 }
 function sheet(name) {
   const ss = book();
