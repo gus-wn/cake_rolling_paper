@@ -239,6 +239,11 @@ button,input,textarea{font:inherit;color:inherit}
 .alb-badge{position:absolute;bottom:4px;right:4px;background:var(--accent);color:var(--accent-ink);font-size:11px;font-weight:800;border-radius:999px;padding:1px 7px}
 .alb-badge.mine{background:var(--mint);color:#173b2c}
 .alb-item.up{opacity:.65}
+.alb-big{border:1.5px dashed var(--accent);border-radius:8px;background:transparent;color:var(--accent);font-weight:800;font-size:12px;padding:5px 6px;cursor:pointer}
+.alb-big[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-style:solid}
+.alb-big:disabled{opacity:.45;cursor:default}
+.alb-big:focus-visible{outline:3px solid var(--mint);outline-offset:2px}
+.alb-badge.big{left:auto;right:4px;top:4px;bottom:auto}
 .print-help{display:flex;flex-direction:column;gap:8px}
 .print-help ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:14px}
 .alb-preview{display:flex;flex-direction:column;gap:18px;width:100%}
@@ -988,10 +993,12 @@ function layoutFill(layout,photos){ const sl=pageSlots(layout); let a=0; photos.
 function albumPages(){
   const ph=albumOrder(), pages=[]; let i=0;
   while(i<ph.length){
-    const rest=ph.slice(i), cands=[];
+    if(ph[i].big){ pages.push({layout:"one",photos:[ph[i]]}); i++; continue; }   // 크게: 한 쪽에 한 장
+    let end=i; while(end<ph.length&&!ph[end].big) end++;                          // 다음 '크게' 사진 앞까지만 묶어요
+    const rest=ph.slice(i,end), cands=[];
     if(rest.length>=3) cands.push({layout:"grid4",photos:rest.slice(0,4),bonus:rest.length>=4?1.12:0.95});
     if(rest.length>=2){ cands.push({layout:"stack2",photos:rest.slice(0,2),bonus:1}); cands.push({layout:"side2",photos:rest.slice(0,2),bonus:1}); }
-    cands.push({layout:"one",photos:rest.slice(0,1),bonus:rest.length===1?1:0.7});
+    cands.push({layout:"one",photos:rest.slice(0,1),bonus:rest.length===1?1:0.45});   // 혼자 크게는 '크게' 버튼으로만 (자동으로는 되도록 묶어요)
     cands.forEach(c=>c.score=layoutFill(c.layout,c.photos)*c.bonus);
     const best=cands.sort((a,b)=>b.score-a.score)[0];
     pages.push({layout:best.layout,photos:best.photos}); i+=best.photos.length;
@@ -1138,7 +1145,7 @@ function base64ToBlob(s){ const bin=atob(s), u=new Uint8Array(bin.length); for(l
 async function makeThumb(blob){ const b=await createImageBitmap(blob), k=240/Math.max(b.width,b.height), c=document.createElement("canvas");
   c.width=Math.round(b.width*k); c.height=Math.round(b.height*k); c.getContext("2d").drawImage(b,0,0,c.width,c.height); if(b.close) b.close(); return c.toDataURL("image/jpeg",0.8); }
 // 저장공간이 사진첩을 지원하는 새 버전인지 확인
-async function albumServerReady(){ try{ return (await api("version"))>=3; }catch(e){ return e&&e.code==="network"?"network":false; } }
+async function albumServerReady(){ try{ return (await api("version"))>=4; }catch(e){ return e&&e.code==="network"?"network":false; } }
 const DEPLOY_HELP=["저장공간(구글 Apps Script)을 사진첩용 새 코드로 바꿔야 사진을 저장할 수 있어요.",
   "① Apps Script 편집기에 저장소의 최신 apps-script/Code.gs를 붙여 넣고 저장",
   "② 위쪽 함수 목록에서 setup을 골라 ▶ 실행 → 구글 드라이브 권한 허용",
@@ -1280,7 +1287,7 @@ function renderAlbum(code){
   function mergePhotos(remote){
     const byId=new Map(ALB.photos.map(p=>[p.id,p])), keep=[];
     remote.forEach(r=>{ const p=byId.get(r.id);
-      if(p){ if(!p.dirty){ Object.assign(p,{time:r.time,caption:r.caption,ord:r.ord,dateEdited:r.dateEdited,fromExif:r.fromExif}); } p.mine=r.mine; keep.push(p); }
+      if(p){ if(!p.dirty){ Object.assign(p,{time:r.time,caption:r.caption,ord:r.ord,dateEdited:r.dateEdited,fromExif:r.fromExif,big:!!r.big}); } p.mine=r.mine; keep.push(p); }
       else keep.push({...r,added:r.createdAt,blob:null,thumb:null}); });
     ALB.photos.filter(p=>p.uploading).forEach(p=>keep.push(p));
     ALB.photos=keep;
@@ -1351,8 +1358,12 @@ function renderAlbum(code){
     const thumb=p.thumb?el("img",{src:p.thumb,alt:p.name||"사진"}):el("span",{class:"alb-loading",text:p.failed?"불러오지 못했어요":"불러오는 중…"});
     return el("div",{class:"alb-item"+(p.uploading?" up":"")},
       el("div",{class:"alb-thumb"},thumb,el("span",{class:"alb-no",text:String(idx+1)}),p.uploading?el("span",{class:"alb-badge",text:"올리는 중"}):null,
-        server&&p.mine&&!ALB.owner?el("span",{class:"alb-badge mine",text:"내 사진"}):null),
+        server&&p.mine&&!ALB.owner?el("span",{class:"alb-badge mine",text:"내 사진"}):null,
+        p.big?el("span",{class:"alb-badge big",text:"크게"}):null),
       el("div",{class:"alb-meta"},dateBox(p,ed),cap,
+        el("button",{class:"alb-big",type:"button","aria-pressed":String(!!p.big),disabled:!ed||p.uploading,title:"이 사진을 한 쪽에 혼자 크게 넣어요",
+          onclick:()=>{ p.big=!p.big; savePhoto(p,{big:p.big},0); renderList(); schedule(); toast(p.big?"이 사진을 한 쪽에 크게 넣었어요":"원래 배치로 돌렸어요"); }},
+          p.big?"⤡ 크게 넣는 중 · 되돌리기":"⤢ 크게 (한 쪽에 한 장)"),
         el("div",{class:"alb-tools"},
           ALB.sort==="manual"&&canSettings()?el("button",{class:"btn small ghost",type:"button","aria-label":"앞으로",onclick:()=>move(-1)},"◀"):null,
           ALB.sort==="manual"&&canSettings()?el("button",{class:"btn small ghost",type:"button","aria-label":"뒤로",onclick:()=>move(1)},"▶"):null,

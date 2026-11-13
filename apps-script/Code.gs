@@ -11,13 +11,13 @@
  * 이 코드로 처음 바꾼 뒤에는 편집기 위쪽에서 setup 함수를 골라 ▶ 실행을 한 번 눌러
  * 드라이브 사용 권한을 허용한 다음, 배포 관리 → 연필 → 새 버전으로 배포하세요.
  */
-const VERSION = 3;
+const VERSION = 4;
 
 const HEADERS = {
   cakes:    ['code', 'to', 'title', 'flavor', 'key', 'createdAt'],
   toppings: ['id', 'cake', 'sprite', 'note', 'x', 'y', 'name', 'text', 'key', 'createdAt'],
   albums:   ['code', 'title', 'sub', 'flavor', 'cover', 'sort', 'key', 'createdAt'],
-  photos:   ['id', 'album', 'fileId', 'w', 'h', 'time', 'fromExif', 'dateEdited', 'caption', 'ord', 'key', 'createdAt']
+  photos:   ['id', 'album', 'fileId', 'w', 'h', 'time', 'fromExif', 'dateEdited', 'caption', 'ord', 'key', 'createdAt', 'big']
 };
 const MAX_PHOTOS_PER_ALBUM = 300;
 const MAX_PHOTO_BASE64 = 6000000; // 사진 한 장 약 4.5MB까지
@@ -69,7 +69,7 @@ const ACTIONS = {
     if (!a) throw new Error('not_found');
     const photos = rows('photos').filter(p => p.album === code).map(p => ({
       id: p.id, w: Number(p.w), h: Number(p.h), time: Number(p.time), fromExif: p.fromExif === '1', dateEdited: p.dateEdited === '1',
-      caption: p.caption, ord: Number(p.ord), createdAt: Number(p.createdAt), mine: !!key && p.key === key
+      caption: p.caption, ord: Number(p.ord), createdAt: Number(p.createdAt), big: p.big === '1', mine: !!key && p.key === key
     }));
     return { code: a.code, title: a.title, sub: a.sub, flavor: a.flavor, cover: a.cover !== '0', sort: a.sort || 'time',
       createdAt: Number(a.createdAt), mine: !!key && a.key === key, photos: photos };
@@ -118,7 +118,7 @@ const ACTIONS = {
     return withLock(() => {
       append('photos', [id, code, file.getId(), clampInt(req.w, 1, 20000), clampInt(req.h, 1, 20000),
         Number(req.time) > 0 ? Math.round(Number(req.time)) : now, req.fromExif ? '1' : '0', req.dateEdited ? '1' : '0',
-        str(req.caption, 20), Number(req.ord) > 0 ? Math.round(Number(req.ord)) : now, key, now]);
+        str(req.caption, 20), Number(req.ord) > 0 ? Math.round(Number(req.ord)) : now, key, now, req.big ? '1' : '0']);
       return id;
     });
   },
@@ -139,6 +139,7 @@ const ACTIONS = {
       if (!key || (p.key !== key && !(a && a.key === key))) throw new Error('forbidden');
       const ch = {};
       if (req.caption != null) ch.caption = str(req.caption, 20);
+      if (req.big != null) ch.big = req.big ? '1' : '0';
       if (req.time != null && Number(req.time) > 0) { ch.time = Math.round(Number(req.time)); ch.dateEdited = '1'; }
       if (req.ord != null && Number(req.ord) > 0) {
         if (!(a && a.key === key)) throw new Error('forbidden');
@@ -285,6 +286,9 @@ function sheet(name) {
     sh.appendRow(HEADERS[name]);
     sh.setFrozenRows(1);
     sh.getRange('A:Z').setNumberFormat('@'); // 모든 값을 글자로 저장
+  } else {
+    const h = HEADERS[name], have = sh.getRange(1, 1, 1, h.length).getValues()[0];
+    h.forEach((k, i) => { if (String(have[i] || '') !== k && !have[i]) sh.getRange(1, i + 1).setValue(k); });
   }
   return sh;
 }
